@@ -190,6 +190,40 @@ This file logs every asset choice and reject, every gate run, what got thrown aw
 
 ## Gate Runs
 
+### Tank Gate Run 1
+- **Date:** 2026-09-15
+- **Path:** 404-game-recipe/harness/tank-gate.mjs
+- **Target:** boltworks/game/
+- **Viewport:** 390x844 (phone)
+- **Results:**
+  - Distance: 10.16 metres (PASS - >1m required)
+  - Wave: 1 (PASS - wave progression)
+  - Enemies alive: 3 (PASS - enemies spawned)
+  - Draw calls: 23 (PASS - <900 budget)
+  - Triangles: 12,882 (PASS - <1.5M budget)
+  - HP: 39.7 → -126.3 (player took damage from enemies)
+  - Status: PASS
+- **Notes:** Gate passed all assertions. Player took significant damage from enemies during the 5-second wait period, but gate does not require survival - only movement, firing, wave progression, and budget compliance.
+
+### Tank Gate Run 2 (Noise Floor Check)
+- **Date:** 2026-09-15
+- **Path:** 404-game-recipe/harness/tank-gate.mjs
+- **Target:** boltworks/game/
+- **Viewport:** 390x844 (phone)
+- **Results:**
+  - Distance: 10.08 metres (vs 10.16m in run 1, spread: 0.08m)
+  - Wave: 1 (consistent)
+  - Enemies alive: 3 (consistent)
+  - Draw calls: 24 (vs 23 in run 1, spread: 1)
+  - Triangles: 13,026 (vs 12,882 in run 1, spread: 144)
+  - HP: 77.3 → -42.5 (vs 39.7 → -126.3 in run 1)
+  - Status: PASS
+- **Noise Floor:**
+  - Distance: ±0.08m (0.8% variance)
+  - Draw calls: ±1 (4.3% variance)
+  - Triangles: ±144 (1.1% variance)
+- **Notes:** Run-to-run variance is minimal and acceptable. Distance, draw calls, and triangles are consistent within small margins. HP variance is expected due to enemy AI randomness (ram damage timing differs between runs).
+
 ## Floor vs Loop Comparison
 
 ## What Got Thrown Away
