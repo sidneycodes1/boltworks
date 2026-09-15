@@ -2,16 +2,18 @@
 
 An original isometric arcade tank game for the 404 Game Jam (Sep 2026).
 
-## Originality Mechanic
+## Originality Mechanic (20% of judging)
 
-The tank is assembled from modules. Hull, tracks, turret, barrel, and armour plates are each separate verified 404 asset modules. Between waves the player bolts on different parts and watches the tank physically rebuild in front of them, then drives what they built.
+The tank is assembled from modules. Hull, tracks, turret, barrel, and armour plates are each separate verified 404 asset modules. Between waves the player bolts on different parts and watches the tank physically rebuild in front of them, then drives what they built. This is cheap in this format and expensive in any mesh-based one — that gap is the story.
 
-## Scope
+## Locked Scope
 
 - 3 arenas, 3 waves each
 - 3 enemy tank types: rusher, shooter, heavy
 - 6-8 bolt-on player modules across hull/turret/barrel/armour
 - Win: clear all 3 waves in an arena. Lose: hull integrity reaches zero.
+
+This scope is deliberately small. A finished small game beats an unfinished big one, and 40% of the score is "is it good to play".
 
 ## Build Status
 
