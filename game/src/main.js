@@ -70,8 +70,8 @@ window.__START__ = () => {
   startScreen.classList.remove('on');
   lastTime = performance.now();
 
-  // Start first wave
-  startWave(1);
+  // Don't auto-start wave for floor build
+  // startWave(1);
 
   requestAnimationFrame(loop);
 };
@@ -823,9 +823,29 @@ function setupInput() {
     input.x = (keys['ArrowRight'] ? 1 : 0) - (keys['ArrowLeft'] ? 1 : 0);
     input.y = (keys['ArrowDown'] ? 1 : 0) - (keys['ArrowUp'] ? 1 : 0);
     input.fire = keys['Space'] || false;
-    
+
     if (input.fire) fireBtn.classList.add('dn');
     else fireBtn.classList.remove('dn');
+
+    // Debug: trigger wave with 'W' key
+    if (keys['KeyW'] && !window.__WAVE_TRIGGERED__) {
+      window.__WAVE_TRIGGERED__ = true;
+      startWave(1);
+    }
+
+    // Debug: capture frame with 'C' key
+    if (keys['KeyC'] && !window.__CAPTURE_TRIGGERED__) {
+      window.__CAPTURE_TRIGGERED__ = true;
+      const canvas = document.getElementById('c');
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `frame_${Date.now()}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
   }
   
   // Start button
