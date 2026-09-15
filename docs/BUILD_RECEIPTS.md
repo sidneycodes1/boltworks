@@ -226,4 +226,62 @@ This file logs every asset choice and reject, every gate run, what got thrown aw
 
 ## Floor vs Loop Comparison
 
+### Floor Build (Manual Capture)
+- **Date:** 2026-09-15
+- **Purpose:** Baseline reference frames for critic comparison
+- **Process:**
+  1. Start game with debug controls (W for wave, C for capture)
+  2. Position tank for optimal framing
+  3. Press 'W' to trigger wave 1
+  4. Press 'C' to capture 6 reference frames during gameplay
+  5. Review frames for lighting, composition, and readability
+- **Notes:** Floor build uses manual capture to ensure optimal framing. Debug controls added to game for controlled wave triggering and frame capture.
+
+### Reference Claims (Before Critic Review)
+
+Based on STYLE-LOCK.md and current implementation:
+
+**Visual Style:**
+- Industrial military aesthetic with riveted steel plates
+- Worn tactical finish showing field use and weathering
+- Palette: 0x4a545c (hull), 0x2a2e32 (tracks), 0x3d444a (turret), 0xffb45a (accents)
+- Materials: metal (primary), with roughness 0.8-0.9
+
+**Lighting:**
+- Ambient light at 0.4 intensity
+- Directional light at 0.8 intensity, positioned at (10, 20, 10)
+- Shadow mapping enabled with PCF soft shadows
+- Lighting should couple to surfaces properly (material roughness 0.8-0.9)
+
+**Tank Silhouette:**
+- Player tank: ~3.2m × 1.8m × 1.6m (light hull with standard tracks)
+- Rounded turret with commander's cupola
+- Short barrel with muzzle brake
+- Side and front armour plates visible on waves 2-3
+- Silhouette visibly changes between waves due to module upgrades
+
+**Enemy Silhouettes:**
+- Rusher: pointed front nose, sloped sides, fast profile
+- Shooter: boxy shape, raised front deck
+- Heavy: thick frontal armour, reinforced rear
+- All enemies share generic rounded turret
+
+**Arena Elements:**
+- Ground: 4m slabs with expansion joints, color 0x3a3e42
+- Walls: 1m cubes, color 0x2d3136
+- Barriers: 2m × 0.8m, color 0x2d3136
+- Supplies: crates (0.8m cubes, color 0x6b7a8a), fuel drums (0.6m × 0.9m)
+
+**Composition:**
+- Isometric camera at 20m height, 20m distance
+- Arena: 50m × 50m ground plane
+- Enemies spawn in circle at 15-20m distance
+- Tank centered in frame during movement
+
+**Readability:**
+- Tank clearly distinguished from enemies by size and color
+- Shells visible as orange (0xffb45a) cylinders
+- UI elements: start screen, touch controls (stick bottom-left, fire bottom-right)
+- HP, wave, and enemy count tracked in telemetry
+
 ## What Got Thrown Away

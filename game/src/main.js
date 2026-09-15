@@ -70,8 +70,8 @@ window.__START__ = () => {
   startScreen.classList.remove('on');
   lastTime = performance.now();
 
-  // Don't auto-start wave for floor build
-  // startWave(1);
+  // Start first wave
+  startWave(1);
 
   requestAnimationFrame(loop);
 };
