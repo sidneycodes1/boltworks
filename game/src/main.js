@@ -807,7 +807,37 @@ function setupInput() {
     input.fire = false;
     fireBtn.classList.remove('dn');
   });
-  
+
+  // Capture button
+  const capBtn = document.getElementById('bcap');
+  capBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    const canvas = document.getElementById('c');
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `boltworks_frame_${Date.now()}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      console.log('[BOLTWORKS] Frame captured');
+    });
+  });
+
+  capBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const canvas = document.getElementById('c');
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `boltworks_frame_${Date.now()}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      console.log('[BOLTWORKS] Frame captured');
+    });
+  });
+
   // Keyboard fallback for desktop
   const keys = {};
   window.addEventListener('keydown', (e) => {
@@ -841,12 +871,27 @@ function setupInput() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `frame_${Date.now()}.png`;
+        a.download = `boltworks_frame_${Date.now()}.png`;
         a.click();
         URL.revokeObjectURL(url);
+        console.log('[BOLTWORKS] Frame captured via keyboard');
       });
     }
   }
+
+  // Console command: window.captureFrame()
+  window.captureFrame = () => {
+    const canvas = document.getElementById('c');
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `boltworks_frame_${Date.now()}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      console.log('[BOLTWORKS] Frame captured via console');
+    });
+  };
   
   // Start button
   document.getElementById('startb').addEventListener('click', () => {
