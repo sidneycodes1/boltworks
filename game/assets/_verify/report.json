@@ -1,0 +1,944 @@
+[
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 15,
+  "tris": 368,
+  "materials": 3,
+  "size": [
+   1.35,
+   0.42,
+   0.58
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.0927,
+    "edgeDensity": 0.1621
+   },
+   "right": {
+    "coverage": 0.0931,
+    "edgeDensity": 0.0748
+   },
+   "back": {
+    "coverage": 0.0949,
+    "edgeDensity": 0.1174
+   },
+   "left": {
+    "coverage": 0.0679,
+    "edgeDensity": 0.1031
+   }
+  },
+  "error": null,
+  "name": "armour_plate_front",
+  "problems": []
+ },
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 21,
+  "tris": 432,
+  "materials": 3,
+  "size": [
+   1.2,
+   0.8,
+   0.085
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.3557,
+    "edgeDensity": 0.0465
+   },
+   "right": {
+    "coverage": 0.0395,
+    "edgeDensity": 0.1369
+   },
+   "back": {
+    "coverage": 0.3701,
+    "edgeDensity": 0.0309
+   },
+   "left": {
+    "coverage": 0.0401,
+    "edgeDensity": 0.1201
+   }
+  },
+  "error": null,
+  "name": "armour_plate_side",
+  "problems": []
+ },
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 10,
+  "tris": 336,
+  "materials": 3,
+  "size": [
+   3.515,
+   0.22,
+   1.2
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.0112,
+    "edgeDensity": 0.2431
+   },
+   "right": {
+    "coverage": 0.0209,
+    "edgeDensity": 0.2659
+   },
+   "back": {
+    "coverage": 0.0102,
+    "edgeDensity": 0.3036
+   },
+   "left": {
+    "coverage": 0.0186,
+    "edgeDensity": 0.2829
+   }
+  },
+  "error": null,
+  "name": "barrel_long",
+  "problems": []
+ },
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 9,
+  "tris": 288,
+  "materials": 2,
+  "size": [
+   2.36,
+   0.26,
+   0.8
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.0203,
+    "edgeDensity": 0.1283
+   },
+   "right": {
+    "coverage": 0.0354,
+    "edgeDensity": 0.1084
+   },
+   "back": {
+    "coverage": 0.0173,
+    "edgeDensity": 0.1572
+   },
+   "left": {
+    "coverage": 0.0312,
+    "edgeDensity": 0.1172
+   }
+  },
+  "error": null,
+  "name": "barrel_short",
+  "problems": []
+ },
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 11,
+  "tris": 1740,
+  "materials": 2,
+  "size": [
+   2.99,
+   0.25,
+   2.5
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.0128,
+    "edgeDensity": 0.1858
+   },
+   "right": {
+    "coverage": 0.0281,
+    "edgeDensity": 0.3594
+   },
+   "back": {
+    "coverage": 0.0089,
+    "edgeDensity": 0.3012
+   },
+   "left": {
+    "coverage": 0.0213,
+    "edgeDensity": 0.4579
+   }
+  },
+  "error": null,
+  "name": "barrel_twin",
+  "problems": []
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 11,
+  "tris": 132,
+  "materials": 2,
+  "size": [
+   1.51,
+   0.8,
+   1.51
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.2433,
+    "edgeDensity": 0.0132
+   },
+   "right": {
+    "coverage": 0.0696,
+    "edgeDensity": 0.0626
+   },
+   "back": {
+    "coverage": 0.3144,
+    "edgeDensity": 0.0197
+   },
+   "left": {
+    "coverage": 0.3129,
+    "edgeDensity": 0.0087
+   }
+  },
+  "error": null,
+  "name": "barrier_corner",
+  "problems": [
+   "only 132 triangles, too crude to be finished"
+  ]
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 9,
+  "tris": 108,
+  "materials": 3,
+  "size": [
+   2,
+   0.8,
+   0.42
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.3178,
+    "edgeDensity": 0.0129
+   },
+   "right": {
+    "coverage": 0.0562,
+    "edgeDensity": 0.0276
+   },
+   "back": {
+    "coverage": 0.3161,
+    "edgeDensity": 0.0098
+   },
+   "left": {
+    "coverage": 0.1357,
+    "edgeDensity": 0.0174
+   }
+  },
+  "error": null,
+  "name": "barrier_low",
+  "problems": [
+   "only 108 triangles, too crude to be finished"
+  ]
+ },
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 13,
+  "tris": 156,
+  "materials": 4,
+  "size": [
+   0.82,
+   0.82,
+   0.82
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.4141,
+    "edgeDensity": 0.0767
+   },
+   "right": {
+    "coverage": 0.4141,
+    "edgeDensity": 0.0767
+   },
+   "back": {
+    "coverage": 0.4132,
+    "edgeDensity": 0.0975
+   },
+   "left": {
+    "coverage": 0.4132,
+    "edgeDensity": 0.0902
+   }
+  },
+  "error": null,
+  "name": "crate_supply",
+  "problems": []
+ },
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 13,
+  "tris": 156,
+  "materials": 2,
+  "size": [
+   3.65,
+   1.493,
+   2.206
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.2428,
+    "edgeDensity": 0.092
+   },
+   "right": {
+    "coverage": 0.2108,
+    "edgeDensity": 0.0756
+   },
+   "back": {
+    "coverage": 0.161,
+    "edgeDensity": 0.1327
+   },
+   "left": {
+    "coverage": 0.2101,
+    "edgeDensity": 0.0919
+   }
+  },
+  "error": null,
+  "name": "enemy_hull_heavy",
+  "problems": []
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 9,
+  "tris": 104,
+  "materials": 1,
+  "size": [
+   2.4,
+   0.86,
+   1.718
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.2258,
+    "edgeDensity": 0.0751
+   },
+   "right": {
+    "coverage": 0.2083,
+    "edgeDensity": 0.0585
+   },
+   "back": {
+    "coverage": 0.1563,
+    "edgeDensity": 0.12
+   },
+   "left": {
+    "coverage": 0.2393,
+    "edgeDensity": 0.0577
+   }
+  },
+  "error": null,
+  "name": "enemy_hull_rusher",
+  "problems": [
+   "only 104 triangles, too crude to be finished"
+  ]
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 10,
+  "tris": 120,
+  "materials": 1,
+  "size": [
+   2.6,
+   0.83,
+   1.64
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.308,
+    "edgeDensity": 0.0396
+   },
+   "right": {
+    "coverage": 0.2564,
+    "edgeDensity": 0.056
+   },
+   "back": {
+    "coverage": 0.3051,
+    "edgeDensity": 0.0461
+   },
+   "left": {
+    "coverage": 0.2778,
+    "edgeDensity": 0.0519
+   }
+  },
+  "error": null,
+  "name": "enemy_hull_shooter",
+  "problems": [
+   "only 120 triangles, too crude to be finished"
+  ]
+ },
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 4,
+  "tris": 288,
+  "materials": 2,
+  "size": [
+   1.2,
+   0.77,
+   1.2
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.2504,
+    "edgeDensity": 0.0253
+   },
+   "right": {
+    "coverage": 0.2471,
+    "edgeDensity": 0.0283
+   },
+   "back": {
+    "coverage": 0.2077,
+    "edgeDensity": 0.0314
+   },
+   "left": {
+    "coverage": 0.2133,
+    "edgeDensity": 0.0325
+   }
+  },
+  "error": null,
+  "name": "enemy_turret",
+  "problems": []
+ },
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 9,
+  "tris": 1104,
+  "materials": 4,
+  "size": [
+   0.58,
+   0.96,
+   0.58
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.2759,
+    "edgeDensity": 0.0429
+   },
+   "right": {
+    "coverage": 0.2746,
+    "edgeDensity": 0.0448
+   },
+   "back": {
+    "coverage": 0.2658,
+    "edgeDensity": 0.0521
+   },
+   "left": {
+    "coverage": 0.2673,
+    "edgeDensity": 0.0438
+   }
+  },
+  "error": null,
+  "name": "fuel_drum",
+  "problems": []
+ },
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 23,
+  "tris": 276,
+  "materials": 4,
+  "size": [
+   4.05,
+   0.225,
+   4.05
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.2067,
+    "edgeDensity": 0.0758
+   },
+   "right": {
+    "coverage": 0.2067,
+    "edgeDensity": 0.0754
+   },
+   "back": {
+    "coverage": 0.1898,
+    "edgeDensity": 0.0745
+   },
+   "left": {
+    "coverage": 0.1898,
+    "edgeDensity": 0.0718
+   }
+  },
+  "error": null,
+  "name": "ground_slab",
+  "problems": []
+ },
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 36,
+  "tris": 1392,
+  "materials": 4,
+  "size": [
+   4.108,
+   3.05,
+   3.224
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.2841,
+    "edgeDensity": 0.0582
+   },
+   "right": {
+    "coverage": 0.1361,
+    "edgeDensity": 0.0844
+   },
+   "back": {
+    "coverage": 0.2747,
+    "edgeDensity": 0.0616
+   },
+   "left": {
+    "coverage": 0.1465,
+    "edgeDensity": 0.1273
+   }
+  },
+  "error": null,
+  "name": "hull_heavy",
+  "problems": []
+ },
+ {
+  "ok": true,
+  "mounts": null,
+  "meshes": 27,
+  "tris": 740,
+  "materials": 3,
+  "size": [
+   3.3,
+   2.35,
+   2.24
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.3274,
+    "edgeDensity": 0.0338
+   },
+   "right": {
+    "coverage": 0.1838,
+    "edgeDensity": 0.0488
+   },
+   "back": {
+    "coverage": 0.3096,
+    "edgeDensity": 0.0381
+   },
+   "left": {
+    "coverage": 0.1722,
+    "edgeDensity": 0.0802
+   }
+  },
+  "error": null,
+  "name": "hull_light",
+  "problems": []
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 3,
+  "tris": 336,
+  "materials": 2,
+  "size": [
+   0.5,
+   0.13,
+   0.5
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.2129,
+    "edgeDensity": 0.0954
+   },
+   "right": {
+    "coverage": 0.2129,
+    "edgeDensity": 0.0957
+   },
+   "back": {
+    "coverage": 0.2129,
+    "edgeDensity": 0.1005
+   },
+   "left": {
+    "coverage": 0.2129,
+    "edgeDensity": 0.0993
+   }
+  },
+  "error": null,
+  "name": "spawn_marker",
+  "problems": [
+   "height 0.13m against an expected 0.1m, 30% out"
+  ]
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 89,
+  "tris": 5100,
+  "materials": 6,
+  "size": [
+   3,
+   0.611,
+   0.81
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.0892,
+    "edgeDensity": 0.1307
+   },
+   "right": {
+    "coverage": 0.0797,
+    "edgeDensity": 0.1263
+   },
+   "back": {
+    "coverage": 0.1103,
+    "edgeDensity": 0.1282
+   },
+   "left": {
+    "coverage": 0.0734,
+    "edgeDensity": 0.148
+   }
+  },
+  "error": null,
+  "name": "tracks_standard",
+  "problems": [
+   "height 0.611m against an expected 0.4m, 53% out",
+   "depth 0.81m against an expected 0.4m, 102% out"
+  ]
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 103,
+  "tris": 5916,
+  "materials": 6,
+  "size": [
+   3.26,
+   0.714,
+   1.04
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.1052,
+    "edgeDensity": 0.1402
+   },
+   "right": {
+    "coverage": 0.0986,
+    "edgeDensity": 0.1554
+   },
+   "back": {
+    "coverage": 0.1258,
+    "edgeDensity": 0.136
+   },
+   "left": {
+    "coverage": 0.0905,
+    "edgeDensity": 0.1665
+   }
+  },
+  "error": null,
+  "name": "tracks_wide",
+  "problems": [
+   "depth 1.04m against an expected 0.6m, 73% out"
+  ]
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 10,
+  "tris": 176,
+  "materials": 2,
+  "size": [
+   2.323,
+   0.92,
+   2.26
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.1909,
+    "edgeDensity": 0.0697
+   },
+   "right": {
+    "coverage": 0.2191,
+    "edgeDensity": 0.0756
+   },
+   "back": {
+    "coverage": 0.1571,
+    "edgeDensity": 0.0789
+   },
+   "left": {
+    "coverage": 0.1144,
+    "edgeDensity": 0.1111
+   }
+  },
+  "error": null,
+  "name": "turret_angular",
+  "problems": [
+   "depth 2.26m against an expected 1.4m, 61% out"
+  ]
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 7,
+  "tris": 696,
+  "materials": 2,
+  "size": [
+   1.8,
+   1.4,
+   1.8
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.2334,
+    "edgeDensity": 0.0329
+   },
+   "right": {
+    "coverage": 0.2079,
+    "edgeDensity": 0.0417
+   },
+   "back": {
+    "coverage": 0.0817,
+    "edgeDensity": 0.0978
+   },
+   "left": {
+    "coverage": 0.1773,
+    "edgeDensity": 0.0522
+   }
+  },
+  "error": null,
+  "name": "turret_round",
+  "problems": [
+   "height 1.4m against an expected 1m, 40% out",
+   "front face is nearly featureless next to the others, it was probably never modelled"
+  ]
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 8,
+  "tris": 96,
+  "materials": 3,
+  "size": [
+   1.01,
+   1,
+   1.025
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.4147,
+    "edgeDensity": 0.0081
+   },
+   "right": {
+    "coverage": 0.424,
+    "edgeDensity": 0.0051
+   },
+   "back": {
+    "coverage": 0.0941,
+    "edgeDensity": 0.0761
+   },
+   "left": {
+    "coverage": 0.0941,
+    "edgeDensity": 0.06
+   }
+  },
+  "error": null,
+  "name": "wall_block",
+  "problems": [
+   "only 96 triangles, too crude to be finished"
+  ]
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 6,
+  "tris": 72,
+  "materials": 3,
+  "size": [
+   1.082,
+   1,
+   1.398
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.2736,
+    "edgeDensity": 0.0335
+   },
+   "right": {
+    "coverage": 0.3093,
+    "edgeDensity": 0.02
+   },
+   "back": {
+    "coverage": 0.0846,
+    "edgeDensity": 0.0734
+   },
+   "left": {
+    "coverage": 0.0784,
+    "edgeDensity": 0.0987
+   }
+  },
+  "error": null,
+  "name": "wall_block_cracked",
+  "problems": [
+   "depth 1.398m against an expected 1m, 40% out",
+   "only 72 triangles, too crude to be finished",
+   "front face is nearly featureless next to the others, it was probably never modelled",
+   "right face is nearly featureless next to the others, it was probably never modelled"
+  ]
+ },
+ {
+  "ok": false,
+  "mounts": null,
+  "meshes": 14,
+  "tris": 312,
+  "materials": 4,
+  "size": [
+   1.073,
+   0.95,
+   1.239
+  ],
+  "groundOffset": 0,
+  "centreOffset": [
+   0,
+   0
+  ],
+  "sides": {
+   "front": {
+    "coverage": 0.2705,
+    "edgeDensity": 0.0273
+   },
+   "right": {
+    "coverage": 0.0806,
+    "edgeDensity": 0.0469
+   },
+   "back": {
+    "coverage": 0.3021,
+    "edgeDensity": 0.0151
+   },
+   "left": {
+    "coverage": 0.2918,
+    "edgeDensity": 0.0128
+   }
+  },
+  "error": null,
+  "name": "wall_block_rubble",
+  "problems": [
+   "back face is nearly featureless next to the others, it was probably never modelled",
+   "left face is nearly featureless next to the others, it was probably never modelled"
+  ]
+ }
+]
