@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>BOLTWORKS</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; padding:0; height:100%; overflow:hidden; background:#000; }
+  canvas { display:block; width:100%; height:100%; touch-action:none; }
+  #ui { position:fixed; inset:0; pointer-events:none; z-index:10; }
+  .pe { pointer-events:auto; }
+
+  #load { position:fixed; inset:0; z-index:40; background:#0a0b0c; display:flex;
+          flex-direction:column; align-items:center; justify-content:center; gap:18px; }
+  #load h1 { margin:0; font-size:clamp(28px,7vw,56px); letter-spacing:.34em; font-weight:400;
+             color:#d8d2c6; text-indent:.34em; }
+  #load .sub { font-size:12px; letter-spacing:.28em; color:#6d7278; text-indent:.28em; }
+  #bar { width:min(360px,64vw); height:2px; background:#23262a; overflow:hidden; }
+  #barf { height:100%; width:0%; background:#ffb45a; transition:width .18s linear; }
+  #loadmsg { font-size:11px; color:#585d63; letter-spacing:.1em; height:14px; }
+
+  .screen { position:fixed; inset:0; z-index:35; display:none; flex-direction:column;
+            align-items:center; justify-content:center; gap:22px; text-align:center;
+            background:radial-gradient(ellipse at 50% 45%, rgba(12,13,15,.72), rgba(4,5,6,.94)); }
+  .screen.on { display:flex; }
+  .screen h2 { margin:0; font-size:clamp(24px,6vw,44px); letter-spacing:.3em; font-weight:400; text-indent:.3em; }
+  .screen p { margin:0; font-size:13px; line-height:1.9; color:#8b9097; letter-spacing:.08em; max-width:min(560px,86vw); }
+  .btn { padding:14px 34px; border:1px solid #4a5057; background:rgba(20,22,25,.86); color:#e8e4dc;
+         font:inherit; font-size:13px; letter-spacing:.24em; text-indent:.24em; cursor:pointer; }
+  .btn:hover { border-color:#ffb45a; color:#ffb45a; }
+
+  #touch { position:fixed; inset:0; z-index:14; display:none; }
+  #touch.on { display:block; }
+  .tpad { position:absolute; }
+  #stick { left:0; bottom:0; width:44%; height:56%; }
+  #stickbase { position:absolute; width:112px; height:112px; margin:-56px 0 0 -56px; border-radius:50%;
+               border:1.5px solid rgba(232,228,220,.28); opacity:0; }
+  #sticknub { position:absolute; width:50px; height:50px; margin:-25px 0 0 -25px; border-radius:50%;
+              background:rgba(232,228,220,.2); border:1.5px solid rgba(232,228,220,.45); opacity:0; }
+  .tbtn { position:absolute; border-radius:50%; border:1.5px solid rgba(232,228,220,.34);
+          background:rgba(16,18,20,.4); display:flex; align-items:center; justify-content:center;
+          font-size:10px; letter-spacing:.14em; color:#d6d2ca; user-select:none; }
+  .tbtn.dn { background:rgba(255,180,90,.3); border-color:#ffb45a; }
+  #bfire { right:max(18px,env(safe-area-inset-right)); bottom:26%; width:96px; height:96px; font-size:12px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="load">
+  <h1>BOLTWORKS</h1>
+  <div class="sub">ISOMETRIC ARCADE TANK</div>
+  <div id="bar"><div id="barf"></div></div>
+  <div id="loadmsg">initialising</div>
+</div>
+
+<div id="ui">
+  <div class="screen" id="start">
+    <h2>BOLTWORKS</h2>
+    <p id="startp"></p>
+    <button class="btn pe" id="startb">START</button>
+  </div>
+</div>
+
+<div id="touch">
+  <div class="tpad pe" id="stick"><div id="stickbase"></div><div id="sticknub"></div></div>
+  <div class="tbtn pe" id="bfire">FIRE</div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

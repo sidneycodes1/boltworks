@@ -1,0 +1,9 @@
+node_modules
+_gate/
+_jam/
+.DS_Store
+Thumbs.db
+*.log
+dist/
+build/
+.cache/
