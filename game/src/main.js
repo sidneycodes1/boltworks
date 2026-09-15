@@ -882,6 +882,8 @@ function setupInput() {
   // Console command: window.captureFrame()
   window.captureFrame = () => {
     const canvas = document.getElementById('c');
+    // Force a render before capture
+    renderer.render(scene, camera);
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -901,7 +903,13 @@ function setupInput() {
   // Resize handler
   window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
-    updateCamera();
+    const aspect = window.innerWidth / window.innerHeight;
+    const frustumSize = 25;
+    camera.left = frustumSize * aspect / -2;
+    camera.right = frustumSize * aspect / 2;
+    camera.top = frustumSize / 2;
+    camera.bottom = frustumSize / -2;
+    camera.updateProjectionMatrix();
   });
 }
 
