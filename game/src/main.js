@@ -112,7 +112,7 @@ async function init() {
   camera.lookAt(0, 0, 0);
 
   // Renderer
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
@@ -813,29 +813,25 @@ function setupInput() {
   capBtn.addEventListener('click', (e) => {
     e.preventDefault();
     const canvas = document.getElementById('c');
-    canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `boltworks_frame_${Date.now()}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-      console.log('[BOLTWORKS] Frame captured');
-    });
+    renderer.render(scene, camera);
+    const dataURL = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = dataURL;
+    a.download = `boltworks_frame_${Date.now()}.png`;
+    a.click();
+    console.log('[BOLTWORKS] Frame captured');
   });
 
   capBtn.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const canvas = document.getElementById('c');
-    canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `boltworks_frame_${Date.now()}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-      console.log('[BOLTWORKS] Frame captured');
-    });
+    renderer.render(scene, camera);
+    const dataURL = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = dataURL;
+    a.download = `boltworks_frame_${Date.now()}.png`;
+    a.click();
+    console.log('[BOLTWORKS] Frame captured');
   });
 
   // Keyboard fallback for desktop
@@ -867,32 +863,26 @@ function setupInput() {
     if (keys['KeyC'] && !window.__CAPTURE_TRIGGERED__) {
       window.__CAPTURE_TRIGGERED__ = true;
       const canvas = document.getElementById('c');
-      canvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `boltworks_frame_${Date.now()}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-        console.log('[BOLTWORKS] Frame captured via keyboard');
-      });
+      renderer.render(scene, camera);
+      const dataURL = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataURL;
+      a.download = `boltworks_frame_${Date.now()}.png`;
+      a.click();
+      console.log('[BOLTWORKS] Frame captured via keyboard');
     }
   }
 
   // Console command: window.captureFrame()
   window.captureFrame = () => {
     const canvas = document.getElementById('c');
-    // Force a render before capture
     renderer.render(scene, camera);
-    canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `boltworks_frame_${Date.now()}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-      console.log('[BOLTWORKS] Frame captured via console');
-    });
+    const dataURL = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = dataURL;
+    a.download = `boltworks_frame_${Date.now()}.png`;
+    a.click();
+    console.log('[BOLTWORKS] Frame captured via console');
   };
   
   // Start button
