@@ -36,6 +36,20 @@ let enemies = [];
 let particles = [];
 let lastFireTime = 0;
 const FIRE_COOLDOWN = 0.3; // seconds
+let playerHP = 100;
+const MAX_HP = 100;
+let wave = 1;
+let waveKills = 0;
+let waveTotal = 0;
+let gameOver = false;
+let waveWin = false;
+
+// Enemy configs
+const ENEMY_TYPES = {
+  rusher: { hp: 30, speed: 8, damage: 10, range: 0 },
+  shooter: { hp: 40, speed: 4, damage: 15, range: 15, fireRate: 2 },
+  heavy: { hp: 80, speed: 2, damage: 25, range: 20, fireRate: 3 }
+};
 
 // Telemetry for gate
 window.__READY__ = false;
@@ -44,6 +58,10 @@ window.__START__ = () => {
   gameStarted = true;
   startScreen.classList.remove('on');
   lastTime = performance.now();
+
+  // Start first wave
+  startWave(1);
+
   requestAnimationFrame(loop);
 };
 window.__GAME__ = {
@@ -137,7 +155,29 @@ async function init() {
     shellMesh.setMatrixAt(i, dummy.matrix);
   }
   shellMesh.instanceMatrix.needsUpdate = true;
-  
+
+  // Load enemy assets
+  loadmsg.textContent = 'loading enemies...';
+
+  try {
+    const enemyHullRusher = await ASSET('./assets/enemy_hull_rusher.js', { surfaces: true });
+    const enemyHullShooter = await ASSET('./assets/enemy_hull_shooter.js', { surfaces: true });
+    const enemyHullHeavy = await ASSET('./assets/enemy_hull_heavy.js', { surfaces: true });
+    const enemyTurret = await ASSET('./assets/enemy_turret.js', { surfaces: true });
+
+    console.log('[BOLTWORKS] Enemy assets loaded');
+
+    // Store enemy assets for spawning
+    window.__ENEMY_ASSETS__ = {
+      rusher: enemyHullRusher,
+      shooter: enemyHullShooter,
+      heavy: enemyHullHeavy,
+      turret: enemyTurret
+    };
+  } catch (e) {
+    console.error('[BOLTWORKS] Failed to load enemy assets:', e);
+  }
+
   // Load and create player tank
   loadmsg.textContent = 'building tank...';
   
@@ -248,6 +288,12 @@ function loop(time) {
   // Update shells
   updateShells(dt);
 
+  // Update enemies
+  updateEnemies(dt);
+
+  // Check win/lose conditions
+  checkGameState();
+
   // Update camera to follow tank
   camera.position.set(
     playerTank.position.x + 15,
@@ -328,6 +374,171 @@ function updateShells(dt) {
       shellMesh.instanceMatrix.needsUpdate = true;
     }
   }
+}
+
+function spawnEnemy(type, position) {
+  const assets = window.__ENEMY_ASSETS__;
+  if (!assets) return;
+
+  const hull = assets[type].clone();
+  const turret = assets.turret.clone();
+
+  const enemy = {
+    type,
+    mesh: new THREE.Group(),
+    hp: ENEMY_TYPES[type].hp,
+    lastFire: 0,
+    position: position.clone()
+  };
+
+  enemy.mesh.add(hull);
+  enemy.mesh.add(turret);
+  enemy.mesh.position.copy(position);
+  enemy.mesh.castShadow = true;
+  scene.add(enemy.mesh);
+
+  enemies.push(enemy);
+  window.__GAME__.alive = enemies.length;
+}
+
+function updateEnemies(dt) {
+  enemies.forEach((enemy, index) => {
+    const config = ENEMY_TYPES[enemy.type];
+    const toPlayer = new THREE.Vector3()
+      .subVectors(playerTank.position, enemy.mesh.position);
+    const dist = toPlayer.length();
+
+    // AI behavior based on type
+    if (enemy.type === 'rusher') {
+      // Rush straight at player
+      toPlayer.normalize();
+      enemy.mesh.position.addScaledVector(toPlayer, config.speed * dt);
+      enemy.mesh.lookAt(playerTank.position);
+    } else if (enemy.type === 'shooter') {
+      // Maintain range, fire at player
+      if (dist > config.range) {
+        toPlayer.normalize();
+        enemy.mesh.position.addScaledVector(toPlayer, config.speed * dt);
+      } else if (dist < config.range * 0.7) {
+        toPlayer.normalize();
+        enemy.mesh.position.addScaledVector(toPlayer, -config.speed * dt);
+      }
+      enemy.mesh.lookAt(playerTank.position);
+
+      // Fire at player
+      if (performance.now() - enemy.lastFire > config.fireRate * 1000) {
+        enemyFire(enemy);
+        enemy.lastFire = performance.now();
+      }
+    } else if (enemy.type === 'heavy') {
+      // Slow advance, heavy fire
+      toPlayer.normalize();
+      enemy.mesh.position.addScaledVector(toPlayer, config.speed * dt);
+      enemy.mesh.lookAt(playerTank.position);
+
+      if (performance.now() - enemy.lastFire > config.fireRate * 1000) {
+        enemyFire(enemy);
+        enemy.lastFire = performance.now();
+      }
+    }
+
+    // Collision with player (ram damage)
+    if (dist < 2) {
+      playerHP -= config.damage * dt;
+      window.__GAME__.hp = playerHP;
+    }
+  });
+
+  // Check shell-enemy collisions
+  shells.forEach(shell => {
+    if (!shell.active) return;
+
+    enemies.forEach((enemy, eIndex) => {
+      const dist = shell.position.distanceTo(enemy.mesh.position);
+      if (dist < 1.5) {
+        // Hit enemy
+        enemy.hp -= 20;
+        shell.active = false;
+
+        // Kill enemy
+        if (enemy.hp <= 0) {
+          scene.remove(enemy.mesh);
+          enemies.splice(eIndex, 1);
+          waveKills++;
+          window.__GAME__.kills = waveKills;
+          window.__GAME__.alive = enemies.length;
+        }
+      }
+    });
+  });
+}
+
+function enemyFire(enemy) {
+  // Simple enemy fire - damage player if in range
+  const dist = enemy.mesh.position.distanceTo(playerTank.position);
+  const config = ENEMY_TYPES[enemy.type];
+
+  if (dist <= config.range) {
+    playerHP -= config.damage * 0.3; // Reduced damage per shot
+    window.__GAME__.hp = playerHP;
+  }
+}
+
+function checkGameState() {
+  if (gameOver || waveWin) return;
+
+  // Lose condition
+  if (playerHP <= 0) {
+    gameOver = true;
+    window.__GAME__.over = true;
+    console.log('[BOLTWORKS] Game Over - Player destroyed');
+    return;
+  }
+
+  // Win condition - wave cleared
+  if (waveKills >= waveTotal && waveTotal > 0) {
+    waveWin = true;
+    window.__GAME__.wave = wave;
+    console.log('[BOLTWORKS] Wave', wave, 'cleared');
+
+    // Start next wave after delay
+    setTimeout(() => {
+      if (wave < 3) {
+        startWave(wave + 1);
+      } else {
+        gameOver = true;
+        window.__GAME__.over = true;
+        console.log('[BOLTWORKS] Victory - All waves cleared');
+      }
+    }, 2000);
+    return;
+  }
+}
+
+function startWave(waveNum) {
+  wave = waveNum;
+  waveKills = 0;
+  waveTotal = waveNum * 3; // More enemies each wave
+  waveWin = false;
+
+  console.log('[BOLTWORKS] Starting wave', wave);
+
+  // Spawn enemies
+  const types = ['rusher', 'shooter', 'heavy'];
+  for (let i = 0; i < waveTotal; i++) {
+    const type = types[i % 3];
+    const angle = (i / waveTotal) * Math.PI * 2;
+    const dist = 15 + Math.random() * 5;
+    const pos = new THREE.Vector3(
+      Math.sin(angle) * dist,
+      0,
+      Math.cos(angle) * dist
+    );
+    spawnEnemy(type, pos);
+  }
+
+  window.__GAME__.wave = wave;
+  window.__GAME__.alive = enemies.length;
 }
 
 // Input handling
