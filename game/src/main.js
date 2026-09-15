@@ -43,6 +43,17 @@ let waveKills = 0;
 let waveTotal = 0;
 let gameOver = false;
 let waveWin = false;
+let inAssembly = false;
+
+// Module assembly state
+let currentModules = {
+  hull: 'hull_light',
+  tracks: 'tracks_standard',
+  turret: 'turret_round',
+  barrel: 'barrel_short',
+  armourSide: null,
+  armourFront: null
+};
 
 // Enemy configs
 const ENEMY_TYPES = {
@@ -178,50 +189,70 @@ async function init() {
     console.error('[BOLTWORKS] Failed to load enemy assets:', e);
   }
 
+  // Load module assets for assembly
+  loadmsg.textContent = 'loading modules...';
+
+  try {
+    const moduleAssets = {
+      hull_light: await ASSET('./assets/hull_light.js', { height: 1.2, surfaces: true }),
+      hull_heavy: await ASSET('./assets/hull_heavy.js', { height: 1.2, surfaces: true }),
+      tracks_standard: await ASSET('./assets/tracks_standard.js', { surfaces: true }),
+      tracks_wide: await ASSET('./assets/tracks_wide.js', { surfaces: true }),
+      turret_round: await ASSET('./assets/turret_round.js', { height: 0.6, surfaces: true }),
+      turret_angular: await ASSET('./assets/turret_angular.js', { height: 0.6, surfaces: true }),
+      barrel_short: await ASSET('./assets/barrel_short.js', { surfaces: true }),
+      barrel_long: await ASSET('./assets/barrel_long.js', { surfaces: true }),
+      barrel_twin: await ASSET('./assets/barrel_twin.js', { surfaces: true }),
+      armour_plate_side: await ASSET('./assets/armour_plate_side.js', { surfaces: true }),
+      armour_plate_front: await ASSET('./assets/armour_plate_front.js', { surfaces: true })
+    };
+
+    console.log('[BOLTWORKS] Module assets loaded');
+
+    // Store module assets for assembly
+    window.__MODULE_ASSETS__ = moduleAssets;
+  } catch (e) {
+    console.error('[BOLTWORKS] Failed to load module assets:', e);
+  }
+
   // Load and create player tank
   loadmsg.textContent = 'building tank...';
-  
+
   try {
-    console.log('[BOLTWORKS] Loading hull_light...');
-    const hull = await ASSET('./assets/hull_light.js', { height: 1.2, surfaces: true });
-    console.log('[BOLTWORKS] hull_light loaded');
+    console.log('[BOLTWORKS] Assembling initial tank...');
 
-    console.log('[BOLTWORKS] Loading tracks_standard...');
-    const tracks = await ASSET('./assets/tracks_standard.js', { surfaces: true });
-    console.log('[BOLTWORKS] tracks_standard loaded');
+    // Use module assets for initial tank
+    const modules = window.__MODULE_ASSETS__;
+    if (!modules) throw new Error('Module assets not loaded');
 
-    console.log('[BOLTWORKS] Loading turret_round...');
-    const turret = await ASSET('./assets/turret_round.js', { height: 0.6, surfaces: true });
-    console.log('[BOLTWORKS] turret_round loaded');
+    const hull = modules[currentModules.hull].clone();
+    const tracks = modules[currentModules.tracks].clone();
+    const turret = modules[currentModules.turret].clone();
+    const barrel = modules[currentModules.barrel].clone();
 
-    console.log('[BOLTWORKS] Loading barrel_short...');
-    const barrel = await ASSET('./assets/barrel_short.js', { surfaces: true });
-    console.log('[BOLTWORKS] barrel_short loaded');
-
-    console.log('[BOLTWORKS] Assembling tank...');
     // Assemble tank
     playerTank = new THREE.Group();
     playerTank.add(hull);
-    
+
     // Add tracks (left and right)
     const tracksL = tracks.clone();
     tracksL.position.set(0, 0, 0.9);
     playerTank.add(tracksL);
-    
+
     const tracksR = tracks.clone();
     tracksR.position.set(0, 0, -0.9);
     playerTank.add(tracksR);
-    
+
     // Add turret
     const turretGroup = new THREE.Group();
     turretGroup.add(turret);
     turretGroup.position.y = 0.8;
     playerTank.add(turretGroup);
-    
+
     // Add barrel
     barrel.position.set(0, 0.5, 1.2);
     turretGroup.add(barrel);
-    
+
     playerTank.position.y = 0.2;
     playerTank.castShadow = true;
     scene.add(playerTank);
@@ -317,10 +348,6 @@ function fireShell() {
   // Find inactive shell
   const shell = shells.find(s => !s.active);
   if (!shell) return;
-
-  // Get barrel position from player tank
-  const barrel = playerTank.children.find(c => c.children && c.children.length > 0);
-  if (!barrel) return;
 
   // Fire in tank's forward direction
   const angle = playerTank.rotation.y;
@@ -523,6 +550,11 @@ function startWave(waveNum) {
 
   console.log('[BOLTWORKS] Starting wave', wave);
 
+  // Module assembly between waves
+  if (wave > 1) {
+    rebuildTank();
+  }
+
   // Spawn enemies
   const types = ['rusher', 'shooter', 'heavy'];
   for (let i = 0; i < waveTotal; i++) {
@@ -539,6 +571,174 @@ function startWave(waveNum) {
 
   window.__GAME__.wave = wave;
   window.__GAME__.alive = enemies.length;
+}
+
+function rebuildTank() {
+  inAssembly = true;
+  console.log('[BOLTWORKS] Rebuilding tank for wave', wave);
+
+  // Select new modules based on wave
+  const modules = window.__MODULE_ASSETS__;
+  if (!modules) return;
+
+  // Upgrade modules each wave
+  if (wave === 2) {
+    currentModules.hull = 'hull_heavy';
+    currentModules.barrel = 'barrel_long';
+    currentModules.armourSide = 'armour_plate_side';
+  } else if (wave === 3) {
+    currentModules.turret = 'turret_angular';
+    currentModules.barrel = 'barrel_twin';
+    currentModules.tracks = 'tracks_wide';
+    currentModules.armourFront = 'armour_plate_front';
+  }
+
+  // Animate disassembly
+  disassembleTank().then(() => {
+    // Animate reassembly with new modules
+    assembleTank().then(() => {
+      inAssembly = false;
+      console.log('[BOLTWORKS] Tank rebuild complete');
+    });
+  });
+}
+
+function disassembleTank() {
+  return new Promise((resolve) => {
+    const duration = 1000; // 1 second disassembly
+    const startTime = performance.now();
+
+    // Animate parts flying off
+    const animate = () => {
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      playerTank.children.forEach((child, i) => {
+        // Scale down
+        const scale = 1 - progress * 0.9;
+        child.scale.set(scale, scale, scale);
+
+        // Rotate wildly
+        child.rotation.x += 0.1;
+        child.rotation.z += 0.1;
+
+        // Move outward
+        const offset = (i + 1) * 2;
+        child.position.x += Math.sin(elapsed * 0.01 + i) * 0.05;
+        child.position.y += progress * offset * 0.05;
+      });
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // Clear tank
+        scene.remove(playerTank);
+        playerTank = null;
+        resolve();
+      }
+    };
+
+    animate();
+  });
+}
+
+function assembleTank() {
+  return new Promise((resolve) => {
+    const modules = window.__MODULE_ASSETS__;
+    if (!modules) {
+      resolve();
+      return;
+    }
+
+    // Create new tank with current modules
+    const hull = modules[currentModules.hull].clone();
+    const tracks = modules[currentModules.tracks].clone();
+    const turret = modules[currentModules.turret].clone();
+    const barrel = modules[currentModules.barrel].clone();
+
+    playerTank = new THREE.Group();
+    playerTank.add(hull);
+
+    // Add tracks
+    const tracksL = tracks.clone();
+    tracksL.position.set(0, 0, 0.9);
+    playerTank.add(tracksL);
+
+    const tracksR = tracks.clone();
+    tracksR.position.set(0, 0, -0.9);
+    playerTank.add(tracksR);
+
+    // Add turret
+    const turretGroup = new THREE.Group();
+    turretGroup.add(turret);
+    turretGroup.position.y = 0.8;
+    playerTank.add(turretGroup);
+
+    // Add barrel
+    barrel.position.set(0, 0.5, 1.2);
+    turretGroup.add(barrel);
+
+    // Add armour plates if equipped
+    if (currentModules.armourSide) {
+      const armourL = modules[currentModules.armourSide].clone();
+      armourL.position.set(1.2, 0.5, 0);
+      playerTank.add(armourL);
+
+      const armourR = modules[currentModules.armourSide].clone();
+      armourR.position.set(-1.2, 0.5, 0);
+      armourR.rotation.y = Math.PI;
+      playerTank.add(armourR);
+    }
+
+    if (currentModules.armourFront) {
+      const armourF = modules[currentModules.armourFront].clone();
+      armourF.position.set(0, 0.6, 1.5);
+      playerTank.add(armourF);
+    }
+
+    // Position tank
+    playerTank.position.y = 0.2;
+    playerTank.castShadow = true;
+
+    // Start with parts scaled down for assembly animation
+    playerTank.children.forEach((child) => {
+      child.scale.set(0.1, 0.1, 0.1);
+      child.rotation.y = Math.random() * Math.PI * 2;
+    });
+
+    scene.add(playerTank);
+
+    // Animate assembly
+    const duration = 1000; // 1 second assembly
+    const startTime = performance.now();
+
+    const animate = () => {
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      playerTank.children.forEach((child) => {
+        // Scale up
+        const scale = 0.1 + progress * 0.9;
+        child.scale.set(scale, scale, scale);
+
+        // Rotate to normal
+        child.rotation.y *= 0.9;
+      });
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // Reset to proper scale
+        playerTank.children.forEach((child) => {
+          child.scale.set(1, 1, 1);
+          child.rotation.y = 0;
+        });
+        resolve();
+      }
+    };
+
+    animate();
+  });
 }
 
 // Input handling
