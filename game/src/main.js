@@ -36,8 +36,8 @@ let enemies = [];
 let particles = [];
 let lastFireTime = 0;
 const FIRE_COOLDOWN = 0.3; // seconds
-let playerHP = 100;
-const MAX_HP = 100;
+let playerHP = 150;
+const MAX_HP = 150;
 let wave = 1;
 let waveKills = 0;
 let waveTotal = 0;
@@ -57,9 +57,9 @@ let currentModules = {
 
 // Enemy configs
 const ENEMY_TYPES = {
-  rusher: { hp: 30, speed: 8, damage: 10, range: 0 },
-  shooter: { hp: 40, speed: 4, damage: 15, range: 15, fireRate: 2 },
-  heavy: { hp: 80, speed: 2, damage: 25, range: 20, fireRate: 3 }
+  rusher: { hp: 30, speed: 8, damage: 5, range: 0 },
+  shooter: { hp: 40, speed: 4, damage: 8, range: 15, fireRate: 3 },
+  heavy: { hp: 80, speed: 2, damage: 12, range: 20, fireRate: 4 }
 };
 
 // Telemetry for gate
@@ -471,7 +471,7 @@ function updateEnemies(dt) {
 
     // Collision with player (ram damage)
     if (dist < 2) {
-      playerHP -= config.damage * dt;
+      playerHP -= config.damage * dt * 0.5; // Reduced ram damage
       window.__GAME__.hp = playerHP;
     }
   });
@@ -506,7 +506,7 @@ function enemyFire(enemy) {
   const config = ENEMY_TYPES[enemy.type];
 
   if (dist <= config.range) {
-    playerHP -= config.damage * 0.3; // Reduced damage per shot
+    playerHP -= config.damage * 0.15; // Further reduced damage per shot
     window.__GAME__.hp = playerHP;
   }
 }
