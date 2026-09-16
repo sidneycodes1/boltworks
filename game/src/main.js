@@ -973,6 +973,8 @@ function createArenaLayout(waveNum) {
       worldGrid[x][z] = 3; // 3 = spawn
     }
   });
+
+  console.log('[BOLTWORKS] Arena layout for wave', waveNum, ':', layout.walls.length, 'walls,', layout.barriers.length, 'barriers,', layout.spawns.length, 'spawns');
 }
 
 function placeWorldObjects() {
