@@ -6,8 +6,8 @@
 console.log('[BOLTWORKS] main.js loaded');
 
 import * as THREE from 'three';
-import { ASSET } from '../assetlib.js';
-import { setSurfaceDefaults } from '../surfaces.js';
+import { ASSET } from '../assetlib.js?v=202609160104';
+import { setSurfaceDefaults } from '../surfaces.js?v=202609160104';
 
 console.log('[BOLTWORKS] Imports complete');
 
