@@ -224,6 +224,40 @@ This file logs every asset choice and reject, every gate run, what got thrown aw
   - Triangles: ±144 (1.1% variance)
 - **Notes:** Run-to-run variance is minimal and acceptable. Distance, draw calls, and triangles are consistent within small margins. HP variance is expected due to enemy AI randomness (ram damage timing differs between runs).
 
+### Tank Gate Run 3 (After Gameplay Balance)
+- **Date:** 2026-09-16
+- **Path:** 404-game-recipe/harness/tank-gate.mjs
+- **Target:** boltworks/game/
+- **Viewport:** 390x844 (phone)
+- **Results:**
+  - Distance: 11.49 metres
+  - Wave: 1
+  - Enemies alive: 3
+  - Draw calls: 26
+  - Triangles: 13,386
+  - HP: 143 → 110 (damage dealt correctly)
+  - Status: PASS
+- **Notes:** Gameplay balance changes (player HP 150, reduced enemy damage) working correctly. Gate now asserts HP decrease to confirm damage system is functional.
+
+### Tank Gate Run 4 (Noise Floor Check - After Balance)
+- **Date:** 2026-09-16
+- **Path:** 404-game-recipe/harness/tank-gate.mjs
+- **Target:** boltworks/game/
+- **Viewport:** 390x844 (phone)
+- **Results:**
+  - Distance: 10.91 metres (vs 11.49m in run 3, spread: 0.58m)
+  - Wave: 1 (consistent)
+  - Enemies alive: 3 (consistent)
+  - Draw calls: 24 (vs 26 in run 3, spread: 2)
+  - Triangles: 13,026 (vs 13,386 in run 3, spread: 360)
+  - HP: 146 → 118 (vs 143→110 in run 3)
+  - Status: PASS
+- **Noise Floor:**
+  - Distance: ±0.58m (5.3% variance)
+  - Draw calls: ±2 (8.3% variance)
+  - Triangles: ±360 (2.7% variance)
+- **Notes:** Slightly higher variance after balance changes, still acceptable. Damage system consistently functional across runs.
+
 ## Floor vs Loop Comparison
 
 ### Floor Build (Manual Capture)
