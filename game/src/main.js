@@ -45,6 +45,13 @@ let gameOver = false;
 let waveWin = false;
 let inAssembly = false;
 
+// World state
+let worldAssets = {};
+let worldGrid = []; // 12x12 grid: 0 = empty, 1 = wall, 2 = barrier, 3 = spawn
+const GRID_SIZE = 12;
+const CELL_SIZE = 4; // metres
+let spawnMarkers = [];
+
 // Module assembly state
 let currentModules = {
   hull: 'hull_light',
@@ -57,9 +64,9 @@ let currentModules = {
 
 // Enemy configs
 const ENEMY_TYPES = {
-  rusher: { hp: 30, speed: 8, damage: 5, range: 0 },
-  shooter: { hp: 40, speed: 4, damage: 8, range: 15, fireRate: 3 },
-  heavy: { hp: 80, speed: 2, damage: 12, range: 20, fireRate: 4 }
+  rusher: { hp: 30, speed: 8, damage: 2, range: 0 },
+  shooter: { hp: 40, speed: 4, damage: 3, range: 15, fireRate: 3 },
+  heavy: { hp: 80, speed: 2, damage: 4, range: 20, fireRate: 4 }
 };
 
 // Telemetry for gate
@@ -68,9 +75,20 @@ window.__START__ = () => {
   if (!gameReady) return;
   gameStarted = true;
   startScreen.classList.remove('on');
+
+  // Show touch controls
+  const touch = document.getElementById('touch');
+  if (touch) {
+    touch.classList.add('on');
+    console.log('[BOLTWORKS] Touch controls enabled');
+  } else {
+    console.error('[BOLTWORKS] Touch controls element not found');
+  }
+
   lastTime = performance.now();
 
   // Start first wave
+  console.log('[BOLTWORKS] Starting game, player HP:', playerHP);
   startWave(1);
 
   requestAnimationFrame(loop);
@@ -135,17 +153,8 @@ async function init() {
   dirLight.shadow.camera.bottom = -20;
   scene.add(dirLight);
   
-  // Ground
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(50, 50),
-    new THREE.MeshStandardMaterial({ color: 0x3a3e42, roughness: 0.9 })
-  );
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  scene.add(ground);
-
   // Shell pool (instanced)
-  const shellGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.3, 8);
+  const shellGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.6, 8);
   const shellMat = new THREE.MeshBasicMaterial({ color: 0xffb45a });
   const maxShells = 50;
   const shellMesh = new THREE.InstancedMesh(shellGeo, shellMat, maxShells);
@@ -215,6 +224,28 @@ async function init() {
     console.error('[BOLTWORKS] Failed to load module assets:', e);
   }
 
+  // Load world assets
+  loadmsg.textContent = 'loading world...';
+
+  try {
+    worldAssets = {
+      wall_block: await ASSET('./assets/wall_block.js', { surfaces: true }),
+      wall_block_cracked: await ASSET('./assets/wall_block_cracked.js', { surfaces: true }),
+      wall_block_rubble: await ASSET('./assets/wall_block_rubble.js', { surfaces: true }),
+      barrier_low: await ASSET('./assets/barrier_low.js', { surfaces: true }),
+      barrier_corner: await ASSET('./assets/barrier_corner.js', { surfaces: true }),
+      ground_slab: await ASSET('./assets/ground_slab.js', { surfaces: true }),
+      crate_supply: await ASSET('./assets/crate_supply.js', { surfaces: true }),
+      fuel_drum: await ASSET('./assets/fuel_drum.js', { surfaces: true }),
+      spawn_marker: await ASSET('./assets/spawn_marker.js', { surfaces: true })
+    };
+
+    console.log('[BOLTWORKS] World assets loaded');
+  } catch (e) {
+    console.error('[BOLTWORKS] Failed to load world assets:', e);
+    // Continue without world assets - game will use flat ground
+  }
+
   // Load and create player tank
   loadmsg.textContent = 'building tank...';
 
@@ -259,6 +290,21 @@ async function init() {
 
     console.log('[BOLTWORKS] Tank added to scene');
 
+    // Build initial world layout if assets loaded
+    if (Object.keys(worldAssets).length > 0) {
+      buildWorldLayout(1);
+    } else {
+      // Fallback: create simple ground plane
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(50, 50),
+        new THREE.MeshStandardMaterial({ color: 0x3a3e42, roughness: 0.9 })
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+      console.log('[BOLTWORKS] Using fallback ground plane');
+    }
+
     // Hide loading screen
     console.log('[BOLTWORKS] Hiding loading screen');
     loadEl.style.display = 'none';
@@ -266,6 +312,11 @@ async function init() {
     // Camera follow
     camera.position.set(playerTank.position.x + 15, playerTank.position.y + 15, playerTank.position.z + 15);
     camera.lookAt(playerTank.position);
+
+    // Reset player HP to ensure it starts at max
+    playerHP = MAX_HP;
+    window.__GAME__.hp = playerHP;
+    console.log('[BOLTWORKS] Player HP reset to', playerHP);
     
     loadmsg.textContent = 'ready';
     barf.style.width = '100%';
@@ -300,8 +351,15 @@ function loop(time) {
   if (input.x !== 0 || input.y !== 0) {
     const moveX = input.x * speed * dt;
     const moveZ = input.y * speed * dt;
-    playerTank.position.x += moveX;
-    playerTank.position.z += moveZ;
+
+    // Check wall collision before moving
+    const newX = playerTank.position.x + moveX;
+    const newZ = playerTank.position.z + moveZ;
+
+    if (!checkWallCollision(new THREE.Vector3(newX, 0, newZ))) {
+      playerTank.position.x = newX;
+      playerTank.position.z = newZ;
+    }
 
     // Rotate tank to face movement direction
     if (Math.abs(input.x) > 0.1 || Math.abs(input.y) > 0.1) {
@@ -347,7 +405,10 @@ function loop(time) {
 function fireShell() {
   // Find inactive shell
   const shell = shells.find(s => !s.active);
-  if (!shell) return;
+  if (!shell) {
+    console.log('[BOLTWORKS] No inactive shells available');
+    return;
+  }
 
   // Fire in tank's forward direction
   const angle = playerTank.rotation.y;
@@ -362,6 +423,8 @@ function fireShell() {
     Math.cos(angle) * speed
   );
   shell.lifetime = 2; // seconds
+
+  console.log('[BOLTWORKS] Shell fired from position:', shell.position);
 }
 
 function updateShells(dt) {
@@ -439,16 +502,25 @@ function updateEnemies(dt) {
     if (enemy.type === 'rusher') {
       // Rush straight at player
       toPlayer.normalize();
-      enemy.mesh.position.addScaledVector(toPlayer, config.speed * dt);
+      const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * dt);
+      if (!checkWallCollision(newPos)) {
+        enemy.mesh.position.copy(newPos);
+      }
       enemy.mesh.lookAt(playerTank.position);
     } else if (enemy.type === 'shooter') {
       // Maintain range, fire at player
       if (dist > config.range) {
         toPlayer.normalize();
-        enemy.mesh.position.addScaledVector(toPlayer, config.speed * dt);
+        const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * dt);
+        if (!checkWallCollision(newPos)) {
+          enemy.mesh.position.copy(newPos);
+        }
       } else if (dist < config.range * 0.7) {
         toPlayer.normalize();
-        enemy.mesh.position.addScaledVector(toPlayer, -config.speed * dt);
+        const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, -config.speed * dt);
+        if (!checkWallCollision(newPos)) {
+          enemy.mesh.position.copy(newPos);
+        }
       }
       enemy.mesh.lookAt(playerTank.position);
 
@@ -460,7 +532,10 @@ function updateEnemies(dt) {
     } else if (enemy.type === 'heavy') {
       // Slow advance, heavy fire
       toPlayer.normalize();
-      enemy.mesh.position.addScaledVector(toPlayer, config.speed * dt);
+      const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * dt);
+      if (!checkWallCollision(newPos)) {
+        enemy.mesh.position.copy(newPos);
+      }
       enemy.mesh.lookAt(playerTank.position);
 
       if (performance.now() - enemy.lastFire > config.fireRate * 1000) {
@@ -482,13 +557,15 @@ function updateEnemies(dt) {
 
     enemies.forEach((enemy, eIndex) => {
       const dist = shell.position.distanceTo(enemy.mesh.position);
-      if (dist < 1.5) {
+      if (dist < 2.0) { // Increased hit radius
         // Hit enemy
+        console.log('[BOLTWORKS] Shell hit enemy! Distance:', dist);
         enemy.hp -= 20;
         shell.active = false;
 
         // Kill enemy
         if (enemy.hp <= 0) {
+          console.log('[BOLTWORKS] Enemy destroyed!');
           scene.remove(enemy.mesh);
           enemies.splice(eIndex, 1);
           waveKills++;
@@ -506,7 +583,7 @@ function enemyFire(enemy) {
   const config = ENEMY_TYPES[enemy.type];
 
   if (dist <= config.range) {
-    playerHP -= config.damage * 0.15; // Further reduced damage per shot
+    playerHP -= config.damage * 0.05; // Very low damage per shot for balance
     window.__GAME__.hp = playerHP;
   }
 }
@@ -555,17 +632,38 @@ function startWave(waveNum) {
     rebuildTank();
   }
 
-  // Spawn enemies
+  // Spawn enemies at spawn markers (or fallback to circle if no markers)
   const types = ['rusher', 'shooter', 'heavy'];
   for (let i = 0; i < waveTotal; i++) {
     const type = types[i % 3];
-    const angle = (i / waveTotal) * Math.PI * 2;
-    const dist = 15 + Math.random() * 5;
-    const pos = new THREE.Vector3(
-      Math.sin(angle) * dist,
-      0,
-      Math.cos(angle) * dist
-    );
+    let pos;
+
+    if (spawnMarkers.length > 0) {
+      // Use spawn markers cyclically
+      const spawnIndex = i % spawnMarkers.length;
+      pos = spawnMarkers[spawnIndex].clone();
+      // Add slight random offset to prevent stacking
+      pos.x += (Math.random() - 0.5) * 2;
+      pos.z += (Math.random() - 0.5) * 2;
+    } else {
+      // Fallback: spawn in circle at safe distance
+      const angle = (i / waveTotal) * Math.PI * 2;
+      const dist = 15 + Math.random() * 5;
+      pos = new THREE.Vector3(
+        Math.sin(angle) * dist,
+        0,
+        Math.cos(angle) * dist
+      );
+    }
+
+    // Ensure enemies don't spawn too close to player
+    const distToPlayer = pos.distanceTo(playerTank.position);
+    if (distToPlayer < 5) {
+      // Move enemy further away
+      const awayFromPlayer = pos.clone().sub(playerTank.position).normalize();
+      pos.copy(playerTank.position).add(awayFromPlayer.multiplyScalar(10));
+    }
+
     spawnEnemy(type, pos);
   }
 
@@ -595,6 +693,9 @@ function rebuildTank() {
 
   // Animate disassembly
   disassembleTank().then(() => {
+    // Rebuild world layout for new wave (escalating cover density)
+    buildWorldLayout(wave);
+
     // Animate reassembly with new modules
     assembleTank().then(() => {
       inAssembly = false;
@@ -739,6 +840,241 @@ function assembleTank() {
 
     animate();
   });
+}
+
+// World building functions
+function buildWorldLayout(waveNum) {
+  console.log('[BOLTWORKS] Building world layout for wave', waveNum);
+  console.log('[BOLTWORKS] World assets available:', Object.keys(worldAssets).length);
+
+  // Check if world assets are available
+  if (Object.keys(worldAssets).length === 0) {
+    console.log('[BOLTWORKS] World assets not loaded, skipping world layout');
+    return;
+  }
+
+  // Clear existing world objects
+  clearWorld();
+
+  // Create arena layout based on wave
+  createArenaLayout(waveNum);
+
+  console.log('[BOLTWORKS] World grid created, placing objects...');
+
+  // Place world objects based on grid
+  placeWorldObjects();
+}
+
+function clearWorld() {
+  // Remove all world objects from scene (keep player tank, shells, enemies, lights)
+  const toRemove = [];
+  scene.children.forEach(child => {
+    if (child !== playerTank &&
+        !child.isInstancedMesh &&
+        !enemies.some(e => e.mesh === child) &&
+        !child.isLight &&
+        child.type !== 'Plane' &&
+        child.type !== 'GridHelper') {
+      toRemove.push(child);
+    }
+  });
+  toRemove.forEach(child => scene.remove(child));
+
+  // Clear spawn markers
+  spawnMarkers = [];
+}
+
+function createArenaLayout(waveNum) {
+  // Initialize 12x12 grid
+  worldGrid = [];
+  for (let x = 0; x < GRID_SIZE; x++) {
+    worldGrid[x] = [];
+    for (let z = 0; z < GRID_SIZE; z++) {
+      worldGrid[x][z] = 0; // 0 = empty
+    }
+  }
+
+  // Wave-specific layouts (deterministic, not procedural)
+  const layouts = {
+    1: {
+      // Wave 1: sparse cover
+      walls: [
+        [0,0], [0,11], [11,0], [11,11], // corners
+        [0,5], [0,6], [11,5], [11,6], // middle sides
+        [5,0], [6,0], [5,11], [6,11]  // middle top/bottom
+      ],
+      barriers: [
+        [3,3], [8,3], [3,8], [8,8] // interior corners
+      ],
+      spawns: [
+        [1,5], [1,6], [10,5], [10,6] // spawn points
+      ]
+    },
+    2: {
+      // Wave 2: moderate cover
+      walls: [
+        [0,0], [0,11], [11,0], [11,11], // corners
+        [0,3], [0,4], [0,7], [0,8], // left side
+        [11,3], [11,4], [11,7], [11,8], // right side
+        [3,0], [4,0], [7,0], [8,0], // top
+        [3,11], [4,11], [7,11], [8,11], // bottom
+        [5,5], [6,5] // center
+      ],
+      barriers: [
+        [2,2], [9,2], [2,9], [9,9], // corners
+        [5,2], [6,2], [5,9], [6,9], // middle
+        [2,5], [9,5] // sides
+      ],
+      spawns: [
+        [1,3], [1,8], [10,3], [10,8] // spawn points
+      ]
+    },
+    3: {
+      // Wave 3: dense cover
+      walls: [
+        [0,0], [0,11], [11,0], [11,11], // corners
+        [0,2], [0,3], [0,4], [0,5], [0,6], [0,7], [0,8], [0,9], // left side
+        [11,2], [11,3], [11,4], [11,5], [11,6], [11,7], [11,8], [11,9], // right side
+        [2,0], [3,0], [4,0], [5,0], [6,0], [7,0], [8,0], [9,0], // top
+        [2,11], [3,11], [4,11], [5,11], [6,11], [7,11], [8,11], [9,11], // bottom
+        [3,3], [8,3], [3,8], [8,8], [5,5], [6,5] // interior
+      ],
+      barriers: [
+        [1,2], [10,2], [1,9], [10,9], // near corners
+        [2,1], [9,1], [2,10], [9,10], // near corners
+        [4,4], [7,4], [4,7], [7,7], // interior
+        [5,3], [6,3], [5,8], [6,8] // middle
+      ],
+      spawns: [
+        [1,2], [1,9], [10,2], [10,9] // spawn points
+      ]
+    }
+  };
+
+  const layout = layouts[waveNum] || layouts[1];
+
+  // Place walls
+  layout.walls.forEach(([x, z]) => {
+    if (x >= 0 && x < GRID_SIZE && z >= 0 && z < GRID_SIZE) {
+      worldGrid[x][z] = 1; // 1 = wall
+    }
+  });
+
+  // Place barriers
+  layout.barriers.forEach(([x, z]) => {
+    if (x >= 0 && x < GRID_SIZE && z >= 0 && z < GRID_SIZE) {
+      worldGrid[x][z] = 2; // 2 = barrier
+    }
+  });
+
+  // Place spawn markers
+  layout.spawns.forEach(([x, z]) => {
+    if (x >= 0 && x < GRID_SIZE && z >= 0 && z < GRID_SIZE) {
+      worldGrid[x][z] = 3; // 3 = spawn
+    }
+  });
+}
+
+function placeWorldObjects() {
+  const offset = (GRID_SIZE * CELL_SIZE) / 2 - CELL_SIZE / 2;
+
+  // Count objects for placement
+  let wallCount = 0;
+  let barrierCount = 0;
+  let spawnCount = 0;
+
+  for (let x = 0; x < GRID_SIZE; x++) {
+    for (let z = 0; z < GRID_SIZE; z++) {
+      if (worldGrid[x][z] === 1) wallCount++;
+      if (worldGrid[x][z] === 2) barrierCount++;
+      if (worldGrid[x][z] === 3) spawnCount++;
+    }
+  }
+
+  // Place objects by cloning (not instanced for now due to Group structure)
+  for (let x = 0; x < GRID_SIZE; x++) {
+    for (let z = 0; z < GRID_SIZE; z++) {
+      const worldX = x * CELL_SIZE - offset;
+      const worldZ = z * CELL_SIZE - offset;
+
+      if (worldGrid[x][z] === 1) {
+        const wall = worldAssets.wall_block.clone();
+        wall.position.set(worldX, 0.5, worldZ);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        scene.add(wall);
+      } else if (worldGrid[x][z] === 2) {
+        const barrier = worldAssets.barrier_low.clone();
+        barrier.position.set(worldX, 0.4, worldZ);
+        barrier.castShadow = true;
+        barrier.receiveShadow = true;
+        scene.add(barrier);
+      } else if (worldGrid[x][z] === 3) {
+        const spawn = worldAssets.spawn_marker.clone();
+        spawn.position.set(worldX, 0.05, worldZ);
+        scene.add(spawn);
+        spawnMarkers.push(new THREE.Vector3(worldX, 0, worldZ));
+      }
+    }
+  }
+
+  // Add ground slabs
+  for (let x = 0; x < GRID_SIZE; x++) {
+    for (let z = 0; z < GRID_SIZE; z++) {
+      const slab = worldAssets.ground_slab.clone();
+      slab.position.set(x * CELL_SIZE - offset, -0.1, z * CELL_SIZE - offset);
+      slab.receiveShadow = true;
+      scene.add(slab);
+    }
+  }
+
+  // Add scattered set-dressing (crates and fuel drums)
+  const dressingPositions = [
+    [2, 2], [9, 2], [2, 9], [9, 9], [5, 2], [6, 2], [5, 9], [6, 9]
+  ];
+
+  dressingPositions.forEach(([x, z]) => {
+    if (worldGrid[x][z] === 0) { // Only place on empty cells
+      const worldX = x * CELL_SIZE - offset;
+      const worldZ = z * CELL_SIZE - offset;
+
+      // Randomly choose crate or fuel drum
+      if (Math.random() > 0.5) {
+        const crate = worldAssets.crate_supply.clone();
+        crate.position.set(worldX, 0, worldZ);
+        crate.castShadow = true;
+        crate.receiveShadow = true;
+        scene.add(crate);
+      } else {
+        const drum = worldAssets.fuel_drum.clone();
+        drum.position.set(worldX, 0, worldZ);
+        drum.castShadow = true;
+        drum.receiveShadow = true;
+        scene.add(drum);
+      }
+    }
+  });
+
+  console.log('[BOLTWORKS] World layout built:', wallCount, 'walls,', barrierCount, 'barriers,', spawnCount, 'spawns');
+}
+
+function checkWallCollision(position) {
+  // If world grid is not initialized, no collision
+  if (worldGrid.length === 0) return false;
+
+  // Convert world position to grid coordinates
+  const offset = (GRID_SIZE * CELL_SIZE) / 2 - CELL_SIZE / 2;
+  const gridX = Math.floor((position.x + offset) / CELL_SIZE);
+  const gridZ = Math.floor((position.z + offset) / CELL_SIZE);
+
+  // Check bounds
+  if (gridX < 0 || gridX >= GRID_SIZE || gridZ < 0 || gridZ >= GRID_SIZE) {
+    return true; // Out of bounds counts as collision
+  }
+
+  // Check if cell has wall or barrier
+  const cell = worldGrid[gridX][gridZ];
+  return cell === 1 || cell === 2; // 1 = wall, 2 = barrier
 }
 
 // Input handling
