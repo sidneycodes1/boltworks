@@ -269,7 +269,8 @@ This file logs every asset choice and reject, every gate run, what got thrown aw
   3. Press 'W' to trigger wave 1
   4. Press 'C' to capture 6 reference frames during gameplay
   5. Review frames for lighting, composition, and readability
-- **Notes:** Floor build uses manual capture to ensure optimal framing. Debug controls added to game for controlled wave triggering and frame capture.
+- **Status:** Debug controls added (W for wave, C for capture), CAP button added, preserveDrawingBuffer enabled for proper capture
+- **Notes:** Floor build uses manual capture to ensure optimal framing. Capture methods: CAP button (click/tap), C key, or window.captureFrame() in console. When capture is working, capture 6 frames at key moments.
 
 ### Reference Claims (Before Critic Review)
 
@@ -317,5 +318,31 @@ Based on STYLE-LOCK.md and current implementation:
 - Shells visible as orange (0xffb45a) cylinders
 - UI elements: start screen, touch controls (stick bottom-left, fire bottom-right)
 - HP, wave, and enemy count tracked in telemetry
+
+## Critic Round Requirements
+
+### Critic Round 1
+- **Status:** Pending - requires working frame capture
+- **Process:**
+  1. Capture 6 floor build reference frames during gameplay
+  2. Generate blind pairs using: `node ../404-game-recipe/harness/pairs.mjs --mine _gate/frame_*.png --ref <reference_folder> --out _critic/round1`
+  3. Review CONTACT.png before showing to critic
+  4. Fresh critic judges frames in motion, not isolated stills
+  5. Ask for ONE property to fix first
+  6. Document critic finding and implement fix
+  7. Commit: `fix(engine): address critic round 1 finding (<property>)`
+
+### Critic Round 2
+- **Status:** Pending - requires Critic Round 1 completion
+- **Process:**
+  1. Apply fix from Round 1
+  2. Generate new blind pairs
+  3. Fresh critic (different from Round 1) judges
+  4. If same structural problem returns twice, change plan instead of Round 3
+  5. Document critic finding and implement fix
+  6. Commit: `fix(engine): address critic round 2 finding (<property>)`
+
+### Special Attention
+Watch specifically for lights that don't couple to nearby surfaces — named as the failure that goes unfixed longest in their own runs.
 
 ## What Got Thrown Away
