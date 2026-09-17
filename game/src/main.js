@@ -195,7 +195,7 @@ async function init() {
   scene.add(ambient);
   
   const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-  dirLight.position.set(15, 25, 15);
+  dirLight.position.set(-15, 28, 18);
   dirLight.castShadow = true;
   dirLight.shadow.mapSize.width = 2048;
   dirLight.shadow.mapSize.height = 2048;
@@ -205,7 +205,8 @@ async function init() {
   dirLight.shadow.camera.right = 32;
   dirLight.shadow.camera.top = 32;
   dirLight.shadow.camera.bottom = -32;
-  dirLight.shadow.bias = -0.0005;
+  dirLight.shadow.bias = -0.0003;
+  dirLight.shadow.normalBias = 0.02;
   scene.add(dirLight);
 
   // Extended base ground plane to prevent void clipping beyond the arena slab boundary
