@@ -198,7 +198,7 @@ async function init() {
   const shellGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.6, 8);
   const shellMat = new THREE.MeshBasicMaterial({ color: 0xffb45a });
   const maxShells = 50;
-  const shellMesh = new THREE.InstancedMesh(shellGeo, shellMat, maxShells);
+  shellMesh = new THREE.InstancedMesh(shellGeo, shellMat, maxShells);
   shellMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   scene.add(shellMesh);
 
@@ -430,6 +430,8 @@ function loop(time) {
 
   // Update enemies
   updateEnemies(dt);
+  updateCombatFx(dt, time);
+  if (input.x !== 0 || input.y !== 0) spawnTrackDust(time);
 
   // Check win/lose conditions
   checkGameState();
@@ -486,6 +488,8 @@ function fireShell() {
     Math.cos(angle) * speed
   );
   shell.lifetime = 2; // seconds
+  spawnMuzzleFlash();
+  triggerScreenShake(.07, 90);
 
   console.log('[BOLTWORKS] Shell fired from position:', shell.position);
 }
@@ -546,6 +550,9 @@ function spawnEnemy(type, position) {
 
   enemy.mesh.add(hull);
   enemy.mesh.add(turret);
+  enemy.mesh.traverse((node) => {
+    if (node.isMesh && node.material && !Array.isArray(node.material)) node.material = node.material.clone();
+  });
   enemy.mesh.position.copy(position);
   enemy.mesh.castShadow = true;
   scene.add(enemy.mesh);
@@ -739,6 +746,103 @@ async function startWave(waveNum) {
   window.__GAME__.wave = wave;
   window.__GAME__.alive = enemies.length;
   gameState = 'playing';
+}
+
+
+function damagePlayer(amount) {
+  playerHP -= amount;
+  window.__GAME__.hp = playerHP;
+  const now = performance.now();
+  if (now - lastPlayerImpactAt > 70) {
+    lastPlayerImpactAt = now;
+    triggerHitStop(50);
+    triggerScreenShake(.22, 150);
+  }
+}
+
+function triggerHitStop(milliseconds) {
+  hitStopUntil = Math.max(hitStopUntil, performance.now() + milliseconds);
+}
+
+function triggerScreenShake(magnitude, milliseconds) {
+  shakeMagnitude = Math.max(shakeMagnitude, magnitude);
+  shakeUntil = Math.max(shakeUntil, performance.now() + milliseconds);
+}
+
+function applyScreenShake(time) {
+  if (time >= shakeUntil) { shakeMagnitude = 0; return; }
+  const fade = (shakeUntil - time) / 180;
+  camera.position.x += (Math.random() - .5) * shakeMagnitude * fade;
+  camera.position.y += (Math.random() - .5) * shakeMagnitude * fade;
+}
+
+function flashEnemy(enemy) {
+  const until = performance.now() + 100;
+  enemy.mesh.traverse((node) => {
+    if (!node.isMesh || !node.material || Array.isArray(node.material)) return;
+    const material = node.material;
+    combatFx.push({ type: 'material', material, until, emissive: material.emissive.clone(), intensity: material.emissiveIntensity || 1 });
+    material.emissive.setHex(0xff5544);
+    material.emissiveIntensity = 1.8;
+  });
+}
+
+function spawnMuzzleFlash() {
+  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x8fb4d8, transparent: true, opacity: .95, depthWrite: false }));
+  const forward = new THREE.Vector3(Math.sin(playerTank.rotation.y), 0, Math.cos(playerTank.rotation.y));
+  flash.position.copy(playerTank.position).addScaledVector(forward, 2.1);
+  flash.position.y += 1.45;
+  flash.scale.set(.9, .9, 1);
+  scene.add(flash);
+  combatFx.push({ type: 'sprite', mesh: flash, until: performance.now() + 85, born: performance.now(), base: .9 });
+}
+
+function spawnTrackDust(time) {
+  if (time - lastDustAt < 110 || combatFx.filter((fx) => fx.type === 'dust').length >= 14) return;
+  lastDustAt = time;
+  const dust = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x8b9097, transparent: true, opacity: .34, depthWrite: false }));
+  const back = new THREE.Vector3(-Math.sin(playerTank.rotation.y), 0, -Math.cos(playerTank.rotation.y));
+  dust.position.copy(playerTank.position).addScaledVector(back, 1.35);
+  dust.position.y = .15;
+  dust.scale.set(.38, .38, 1);
+  scene.add(dust);
+  combatFx.push({ type: 'dust', mesh: dust, until: time + 460, born: time, base: .38 });
+}
+
+function spawnEnemyDestruction(enemy) {
+  const origin = enemy.mesh.position.clone();
+  enemy.mesh.children.forEach((part, i) => {
+    const debris = part.clone(true);
+    debris.position.copy(origin).add(part.position);
+    scene.add(debris);
+    combatFx.push({ type: 'debris', mesh: debris, velocity: new THREE.Vector3((i ? .8 : -.8), 2.4 + i, i ? -.55 : .55), until: performance.now() + 720 });
+  });
+  const rubble = worldAssets.wall_block_rubble?.clone();
+  if (rubble) {
+    rubble.position.copy(origin); rubble.scale.setScalar(.26); scene.add(rubble);
+    combatFx.push({ type: 'debris', mesh: rubble, velocity: new THREE.Vector3(0, 2.2, 0), until: performance.now() + 720 });
+  }
+}
+
+function updateCombatFx(dt, time) {
+  combatFx = combatFx.filter((fx) => {
+    if (time < fx.until) {
+      if (fx.type === 'sprite' || fx.type === 'dust') {
+        const life = Math.max(0, (fx.until - time) / (fx.until - fx.born));
+        fx.mesh.material.opacity = fx.type === 'dust' ? life * .34 : life;
+        const size = fx.base * (fx.type === 'dust' ? 1 + (1 - life) * 1.5 : 1 + (1 - life) * .7);
+        fx.mesh.scale.set(size, size, 1);
+      } else if (fx.type === 'debris') {
+        fx.velocity.y -= 7 * dt;
+        fx.mesh.position.addScaledVector(fx.velocity, dt);
+        fx.mesh.rotation.x += .12; fx.mesh.rotation.z += .08;
+      }
+      return true;
+    }
+    if (fx.type === 'material') { fx.material.emissive.copy(fx.emissive); fx.material.emissiveIntensity = fx.intensity; }
+    else if (fx.mesh) scene.remove(fx.mesh);
+    return false;
+  });
 }
 
 function beginPlayerDeath() {
