@@ -66,7 +66,9 @@
   .hud-block { position:absolute; top:max(16px,env(safe-area-inset-top)); min-width:48px; }
   #hud-hp { left:max(16px,env(safe-area-inset-left)); width:min(132px,34vw); }
   #hud-wave { left:50%; transform:translateX(-50%); text-align:center; white-space:nowrap; }
-  #hud-enemies { right:max(16px,env(safe-area-inset-right)); text-align:right; white-space:nowrap; }
+  #hud-enemies { right:max(56px,calc(env(safe-area-inset-right) + 40px)); text-align:right; white-space:nowrap; }
+  #muteb { position:fixed; top:max(16px,env(safe-area-inset-top)); right:max(16px,env(safe-area-inset-right)); width:32px; height:32px; border:1px solid #4a5057; background:rgba(20,22,25,.86); color:#e8e4dc; font-size:14px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:25; }
+  #muteb:hover { border-color:#ffb45a; }
   .hud-label { color:#aeb5bb; font-size:9px; margin-bottom:6px; }
   .hp-track { height:9px; border:1px solid #67717a; background:rgba(9,11,12,.72); overflow:hidden; }
   #hp-fill { height:100%; width:100%; background:linear-gradient(90deg,#8b3a3a,#ffb45a); transition:width 80ms linear; }
@@ -83,6 +85,7 @@
   <div id="loadmsg">initialising</div>
 </div>
 
+<button class="pe" id="muteb" aria-label="Toggle Mute">🔊</button>
 <div id="ui">
   <div id="hud" aria-live="polite">
     <div class="hud-block" id="hud-hp"><div class="hud-label" id="hp-text">HP 150 / 150</div><div class="hp-track"><div id="hp-fill"></div></div></div>

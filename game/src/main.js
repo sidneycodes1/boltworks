@@ -8,6 +8,9 @@ console.log('[BOLTWORKS] main.js loaded');
 import * as THREE from 'three';
 import { ASSET } from '../assetlib.js?v=202609160104';
 import { setSurfaceDefaults } from '../surfaces.js?v=202609160104';
+import { BoltAudio } from './audio.js?v=202609160104';
+
+const audio = new BoltAudio();
 
 console.log('[BOLTWORKS] Imports complete');
 
@@ -432,6 +435,7 @@ function loop(time) {
   updateEnemies(dt);
   updateCombatFx(dt, time);
   if (input.x !== 0 || input.y !== 0) spawnTrackDust(time);
+  audio.updateEngine(Math.min(1, Math.hypot(input.x, input.y)));
 
   // Check win/lose conditions
   checkGameState();
@@ -490,6 +494,7 @@ function fireShell() {
   shell.lifetime = 2; // seconds
   spawnMuzzleFlash();
   triggerScreenShake(.07, 90);
+  audio.playFire();
 
   console.log('[BOLTWORKS] Shell fired from position:', shell.position);
 }
@@ -675,6 +680,7 @@ function checkGameState() {
     gameState = 'transitioning';
     window.__GAME__.wave = wave;
     console.log('[BOLTWORKS] Wave', wave, 'cleared');
+    audio.playWaveClear();
 
     // Start next wave after delay
     setTimeout(() => {
@@ -757,6 +763,7 @@ function damagePlayer(amount) {
     lastPlayerImpactAt = now;
     triggerHitStop(50);
     triggerScreenShake(.22, 150);
+    audio.playHit();
   }
 }
 
@@ -851,6 +858,7 @@ function beginPlayerDeath() {
   gameState = 'hitstop';
   window.__GAME__.over = true;
   spawnPlayerDestruction();
+  audio.playEnemyDeath();
   flashEl.classList.remove('on');
   void flashEl.offsetWidth;
   flashEl.classList.add('on');
@@ -1537,10 +1545,21 @@ function setupInput() {
   document.getElementById('startb').addEventListener('click', () => {
     window.__START__();
   });
-  document.getElementById('retryb').addEventListener('click', resetRun);
-  document.getElementById('againb').addEventListener('click', resetRun);
+  document.getElementById('retryb').addEventListener('click', () => { audio.init(); resetRun(); });
+  document.getElementById('againb').addEventListener('click', () => { audio.init(); resetRun(); });
   document.getElementById('gameover-exit').addEventListener('click', exitToTitle);
   document.getElementById('victory-exit').addEventListener('click', exitToTitle);
+
+  const muteBtn = document.getElementById('muteb');
+  if (muteBtn) {
+    muteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audio.init();
+      const muted = audio.toggleMute();
+      muteBtn.textContent = muted ? '🔇' : '🔊';
+      muteBtn.setAttribute('aria-label', muted ? 'Unmute Sound' : 'Mute Sound');
+    });
+  }
   
   // Resize handler
   window.addEventListener('resize', () => {
