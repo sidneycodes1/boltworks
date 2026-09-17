@@ -8,10 +8,10 @@ The tank is assembled from modules. Hull, tracks, turret, barrel, and armour pla
 
 ## Locked Scope
 
-- 3 arenas, 3 waves each
+- 1 arena across 3 escalating waves (the same grid gains denser cover each wave)
 - 3 enemy tank types: rusher, shooter, heavy
 - 6-8 bolt-on player modules across hull/turret/barrel/armour
-- Win: clear all 3 waves in an arena. Lose: hull integrity reaches zero.
+- Win: clear wave 3. Lose: hull integrity reaches zero.
 
 This scope is deliberately small. A finished small game beats an unfinished big one, and 40% of the score is "is it good to play".
 
