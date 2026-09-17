@@ -49,6 +49,13 @@ let input = { x: 0, y: 0, fire: false };
 let shells = [];
 let enemies = [];
 let particles = [];
+let shellMesh = null;
+let combatFx = [];
+let hitStopUntil = 0;
+let shakeUntil = 0;
+let shakeMagnitude = 0;
+let lastDustAt = 0;
+let lastPlayerImpactAt = 0;
 let lastFireTime = 0;
 const FIRE_COOLDOWN = 0.3; // seconds
 let playerHP = 150;
@@ -376,6 +383,7 @@ async function init() {
     console.log('[BOLTWORKS] Showing start screen');
     startScreen.classList.add('on');
     console.log('[BOLTWORKS] Init complete');
+    requestAnimationFrame(loop);
     
   } catch (e) {
     loadmsg.textContent = 'error: ' + e.message;
@@ -387,7 +395,10 @@ async function init() {
 function loop(time) {
   requestAnimationFrame(loop);
 
-  if (!gameStarted) return;
+  if (!gameStarted) {
+    renderer.render(scene, camera);
+    return;
+  }
 
   const dt = Math.min((time - lastTime) / 1000, 0.1);
   lastTime = time;
