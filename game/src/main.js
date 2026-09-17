@@ -23,6 +23,9 @@ setSurfaceDefaults({ on: true });
 // Game state
 let gameReady = false;
 let gameStarted = false;
+// The loop may render in every state, but only `playing` may read or update the
+// active tank / combat simulation. Tank assembly deliberately removes the tank.
+let gameState = 'loading'; // loading | ready | playing | transitioning | gameover | victory
 let playerTank = null;
 let camera = null;
 let renderer = null;
@@ -44,6 +47,7 @@ let waveTotal = 0;
 let gameOver = false;
 let waveWin = false;
 let inAssembly = false;
+let savedTankTransform = null;
 
 // World state
 let worldAssets = {};
@@ -74,6 +78,7 @@ window.__READY__ = false;
 window.__START__ = () => {
   if (!gameReady) return;
   gameStarted = true;
+  gameState = 'transitioning';
   startScreen.classList.remove('on');
 
   // Show touch controls
@@ -323,6 +328,7 @@ async function init() {
 
     console.log('[BOLTWORKS] Setting gameReady = true');
     gameReady = true;
+    gameState = 'ready';
     console.log('[BOLTWORKS] Setting window.__READY__ = true');
     window.__READY__ = true;
 
@@ -345,6 +351,13 @@ function loop(time) {
 
   const dt = Math.min((time - lastTime) / 1000, 0.1);
   lastTime = time;
+
+  // Assembly and end states still render, but never run code that assumes a
+  // player tank exists. This is a state transition, not a null-object dodge.
+  if (gameState !== 'playing') {
+    renderer.render(scene, camera);
+    return;
+  }
 
   // Update tank position based on input
   const speed = 5; // m/s
@@ -594,6 +607,7 @@ function checkGameState() {
   // Lose condition
   if (playerHP <= 0) {
     gameOver = true;
+    gameState = 'gameover';
     window.__GAME__.over = true;
     console.log('[BOLTWORKS] Game Over - Player destroyed');
     return;
@@ -602,6 +616,7 @@ function checkGameState() {
   // Win condition - wave cleared
   if (waveKills >= waveTotal && waveTotal > 0) {
     waveWin = true;
+    gameState = 'transitioning';
     window.__GAME__.wave = wave;
     console.log('[BOLTWORKS] Wave', wave, 'cleared');
 
@@ -611,6 +626,7 @@ function checkGameState() {
         startWave(wave + 1);
       } else {
         gameOver = true;
+        gameState = 'victory';
         window.__GAME__.over = true;
         console.log('[BOLTWORKS] Victory - All waves cleared');
       }
@@ -619,7 +635,10 @@ function checkGameState() {
   }
 }
 
-function startWave(waveNum) {
+async function startWave(waveNum) {
+  // A wave cannot create enemies until a previous tank assembly has completed.
+  if (!gameStarted || (gameState !== 'transitioning' && gameState !== 'ready')) return;
+
   wave = waveNum;
   waveKills = 0;
   waveTotal = waveNum * 3; // More enemies each wave
@@ -629,7 +648,7 @@ function startWave(waveNum) {
 
   // Module assembly between waves
   if (wave > 1) {
-    rebuildTank();
+    await rebuildTank();
   }
 
   // Spawn enemies at spawn markers (or fallback to circle if no markers)
@@ -669,15 +688,25 @@ function startWave(waveNum) {
 
   window.__GAME__.wave = wave;
   window.__GAME__.alive = enemies.length;
+  gameState = 'playing';
 }
 
-function rebuildTank() {
+async function rebuildTank() {
   inAssembly = true;
   console.log('[BOLTWORKS] Rebuilding tank for wave', wave);
 
   // Select new modules based on wave
   const modules = window.__MODULE_ASSETS__;
-  if (!modules) return;
+  if (!modules || !playerTank) {
+    throw new Error('Cannot rebuild tank before its modules and current tank are available');
+  }
+
+  // The current transform is gameplay state, not part of the animation.
+  // Preserve it before disassembly mutates/removes the tank object.
+  savedTankTransform = {
+    position: playerTank.position.clone(),
+    rotationY: playerTank.rotation.y
+  };
 
   // Upgrade modules each wave
   if (wave === 2) {
@@ -691,17 +720,13 @@ function rebuildTank() {
     currentModules.armourFront = 'armour_plate_front';
   }
 
-  // Animate disassembly
-  disassembleTank().then(() => {
-    // Rebuild world layout for new wave (escalating cover density)
-    buildWorldLayout(wave);
-
-    // Animate reassembly with new modules
-    assembleTank().then(() => {
-      inAssembly = false;
-      console.log('[BOLTWORKS] Tank rebuild complete');
-    });
-  });
+  await disassembleTank();
+  // Rebuild world layout for the next wave while combat remains gated.
+  buildWorldLayout(wave);
+  await assembleTank(savedTankTransform);
+  savedTankTransform = null;
+  inAssembly = false;
+  console.log('[BOLTWORKS] Tank rebuild complete');
 }
 
 function disassembleTank() {
@@ -743,7 +768,7 @@ function disassembleTank() {
   });
 }
 
-function assembleTank() {
+function assembleTank(transform) {
   return new Promise((resolve) => {
     const modules = window.__MODULE_ASSETS__;
     if (!modules) {
@@ -797,8 +822,10 @@ function assembleTank() {
       playerTank.add(armourF);
     }
 
-    // Position tank
-    playerTank.position.y = 0.2;
+    // Restore the exact gameplay transform captured before disassembly. This
+    // prevents a wave clear from teleporting the player back to arena origin.
+    playerTank.position.copy(transform?.position || new THREE.Vector3(0, 0.2, 0));
+    playerTank.rotation.y = transform?.rotationY || 0;
     playerTank.castShadow = true;
 
     // Start with parts scaled down for assembly animation
