@@ -812,7 +812,12 @@ function spawnMuzzleFlash() {
   flash.position.y += 1.45;
   flash.scale.set(.9, .9, 1);
   scene.add(flash);
-  combatFx.push({ type: 'sprite', mesh: flash, until: performance.now() + 85, born: performance.now(), base: .9 });
+
+  const flashLight = new THREE.PointLight(0x8fb4d8, 2.8, 8, 2);
+  flashLight.position.copy(flash.position);
+  scene.add(flashLight);
+
+  combatFx.push({ type: 'sprite', mesh: flash, light: flashLight, until: performance.now() + 85, born: performance.now(), base: .9 });
 }
 
 function spawnTrackDust(time) {
@@ -850,6 +855,7 @@ function updateCombatFx(dt, time) {
         fx.mesh.material.opacity = fx.type === 'dust' ? life * .34 : life;
         const size = fx.base * (fx.type === 'dust' ? 1 + (1 - life) * 1.5 : 1 + (1 - life) * .7);
         fx.mesh.scale.set(size, size, 1);
+        if (fx.light) fx.light.intensity = life * 2.8;
       } else if (fx.type === 'debris') {
         fx.velocity.y -= 7 * dt;
         fx.mesh.position.addScaledVector(fx.velocity, dt);
@@ -858,7 +864,10 @@ function updateCombatFx(dt, time) {
       return true;
     }
     if (fx.type === 'material') { fx.material.emissive.copy(fx.emissive); fx.material.emissiveIntensity = fx.intensity; }
-    else if (fx.mesh) scene.remove(fx.mesh);
+    else {
+      if (fx.mesh) scene.remove(fx.mesh);
+      if (fx.light) scene.remove(fx.light);
+    }
     return false;
   });
 }
