@@ -16,6 +16,10 @@ const loadEl = document.getElementById('load');
 const barf = document.getElementById('barf');
 const loadmsg = document.getElementById('loadmsg');
 const startScreen = document.getElementById('start');
+const hpFill = document.getElementById('hp-fill');
+const hpText = document.getElementById('hp-text');
+const waveHud = document.getElementById('hud-wave');
+const enemiesHud = document.getElementById('hud-enemies');
 
 // Enable procedural surfaces
 setSurfaceDefaults({ on: true });
@@ -430,9 +434,21 @@ function loop(time) {
   window.__GAME__.speed = speed * (Math.abs(input.x) + Math.abs(input.y));
   window.__GAME__.draws = renderer.info.render.calls;
   window.__GAME__.tris = renderer.info.render.triangles;
+  updateHud();
 
   // Render
   renderer.render(scene, camera);
+}
+
+// Kept DOM-only by design: these values mirror the public telemetry object and
+// never add text or geometry to the Three.js scene.
+function updateHud() {
+  const game = window.__GAME__;
+  const hp = Math.max(0, Math.min(MAX_HP, game.hp));
+  hpFill.style.width = `${(hp / MAX_HP) * 100}%`;
+  hpText.textContent = `HP ${Math.ceil(hp)} / ${MAX_HP}`;
+  waveHud.textContent = `WAVE ${game.wave} / 3`;
+  enemiesHud.textContent = `ENEMIES ${game.alive}`;
 }
 
 function fireShell() {
@@ -1183,6 +1199,7 @@ function setupInput() {
       y: rect.top + rect.height / 2
     };
     stickActive = true;
+    stick.classList.add('active');
     stickBase.style.opacity = '1';
     stickNub.style.opacity = '1';
   });
@@ -1210,6 +1227,7 @@ function setupInput() {
   stick.addEventListener('touchend', (e) => {
     e.preventDefault();
     stickActive = false;
+    stick.classList.remove('active');
     input.x = 0;
     input.y = 0;
     stickBase.style.opacity = '0';
@@ -1253,8 +1271,11 @@ function setupInput() {
   capBtn.addEventListener('touchstart', (e) => {
     e.preventDefault();
     lastCaptureTouch = performance.now();
+    capBtn.classList.add('dn');
     captureFrame('CAP touch');
   }, { passive: false });
+  capBtn.addEventListener('touchend', () => capBtn.classList.remove('dn'), { passive: true });
+  capBtn.addEventListener('touchcancel', () => capBtn.classList.remove('dn'), { passive: true });
 
   // Keyboard fallback for desktop
   const keys = {};
