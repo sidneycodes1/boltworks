@@ -32,13 +32,19 @@
 
   .screen { position:fixed; inset:0; z-index:35; display:none; flex-direction:column;
             align-items:center; justify-content:center; gap:22px; text-align:center;
-            background:radial-gradient(ellipse at 50% 45%, rgba(12,13,15,.72), rgba(4,5,6,.94)); }
+            color:#e8e4dc; background:radial-gradient(ellipse at 50% 45%, rgba(12,13,15,.72), rgba(4,5,6,.94)); }
   .screen.on { display:flex; }
   .screen h2 { margin:0; font-size:clamp(24px,6vw,44px); letter-spacing:.3em; font-weight:400; text-indent:.3em; }
   .screen p { margin:0; font-size:13px; line-height:1.9; color:#8b9097; letter-spacing:.08em; max-width:min(560px,86vw); }
-  .btn { padding:14px 34px; border:1px solid #4a5057; background:rgba(20,22,25,.86); color:#e8e4dc;
+  .btn { min-width:48px; min-height:48px; padding:14px 34px; border:1px solid #4a5057; background:rgba(20,22,25,.86); color:#e8e4dc;
          font:inherit; font-size:13px; letter-spacing:.24em; text-indent:.24em; cursor:pointer; }
   .btn:hover { border-color:#ffb45a; color:#ffb45a; }
+  .screen.on { animation:panel-in 180ms ease-out both; }
+  .button-row { display:flex; gap:12px; }
+  #flash { position:fixed; inset:0; z-index:30; pointer-events:none; opacity:0; background:#8b3a3a; }
+  #flash.on { animation:damage-flash 260ms ease-out both; }
+  @keyframes panel-in { from { opacity:0; transform:scale(.97); } to { opacity:1; transform:scale(1); } }
+  @keyframes damage-flash { 0% { opacity:0; } 15% { opacity:.6; } 100% { opacity:0; } }
 
   #touch { position:fixed; inset:0; z-index:14; display:none; }
   #touch.on { display:block; }
@@ -87,6 +93,15 @@
     <h2>BOLTWORKS</h2>
     <p id="startp"></p>
     <button class="btn pe" id="startb">START</button>
+  </div>
+  <div id="flash"></div>
+  <div class="screen" id="gameover" aria-live="assertive">
+    <h2>GAME OVER</h2><p id="gameover-stats"></p>
+    <div class="button-row"><button class="btn pe" id="retryb">RETRY</button><button class="btn pe" id="gameover-exit">EXIT</button></div>
+  </div>
+  <div class="screen" id="victory" aria-live="assertive">
+    <h2>VICTORY</h2><p id="victory-stats"></p>
+    <div class="button-row"><button class="btn pe" id="againb">PLAY AGAIN</button><button class="btn pe" id="victory-exit">EXIT</button></div>
   </div>
 </div>
 

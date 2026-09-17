@@ -20,6 +20,11 @@ const hpFill = document.getElementById('hp-fill');
 const hpText = document.getElementById('hp-text');
 const waveHud = document.getElementById('hud-wave');
 const enemiesHud = document.getElementById('hud-enemies');
+const gameOverScreen = document.getElementById('gameover');
+const victoryScreen = document.getElementById('victory');
+const gameOverStats = document.getElementById('gameover-stats');
+const victoryStats = document.getElementById('victory-stats');
+const flashEl = document.getElementById('flash');
 
 // Enable procedural surfaces
 setSurfaceDefaults({ on: true });
@@ -52,6 +57,10 @@ let gameOver = false;
 let waveWin = false;
 let inAssembly = false;
 let savedTankTransform = null;
+let totalKills = 0;
+let runStartedAt = 0;
+let destructionDebris = [];
+let deathTimer = null;
 
 // World state
 let worldAssets = {};
@@ -100,6 +109,10 @@ const WAVE_SPAWN_PLAN = {
 window.__READY__ = false;
 window.__START__ = () => {
   if (!gameReady) return;
+  if (gameOver || !playerTank) {
+    resetRun();
+    return;
+  }
   gameStarted = true;
   gameState = 'transitioning';
   startScreen.classList.remove('on');
@@ -379,6 +392,7 @@ function loop(time) {
   // Assembly and end states still render, but never run code that assumes a
   // player tank exists. This is a state transition, not a null-object dodge.
   if (gameState !== 'playing') {
+    if (gameState === 'destroying') updateDestructionDebris(dt);
     renderer.render(scene, camera);
     return;
   }
@@ -619,6 +633,7 @@ function updateEnemies(dt) {
           scene.remove(enemy.mesh);
           enemies.splice(eIndex, 1);
           waveKills++;
+          totalKills++;
           window.__GAME__.kills = waveKills;
           window.__GAME__.alive = enemies.length;
         }
@@ -643,10 +658,7 @@ function checkGameState() {
 
   // Lose condition
   if (playerHP <= 0) {
-    gameOver = true;
-    gameState = 'gameover';
-    window.__GAME__.over = true;
-    console.log('[BOLTWORKS] Game Over - Player destroyed');
+    beginPlayerDeath();
     return;
   }
 
@@ -666,6 +678,7 @@ function checkGameState() {
         gameState = 'victory';
         window.__GAME__.over = true;
         console.log('[BOLTWORKS] Victory - All waves cleared');
+        showVictory();
       }
     }, 2000);
     return;
@@ -680,6 +693,7 @@ async function startWave(waveNum) {
   waveKills = 0;
   waveTotal = waveNum * 3; // More enemies each wave
   waveWin = false;
+  if (wave === 1) runStartedAt = performance.now();
 
   console.log('[BOLTWORKS] Starting wave', wave);
 
@@ -725,6 +739,106 @@ async function startWave(waveNum) {
   window.__GAME__.wave = wave;
   window.__GAME__.alive = enemies.length;
   gameState = 'playing';
+}
+
+function beginPlayerDeath() {
+  if (gameOver) return;
+  gameOver = true;
+  gameState = 'hitstop';
+  window.__GAME__.over = true;
+  spawnPlayerDestruction();
+  flashEl.classList.remove('on');
+  void flashEl.offsetWidth;
+  flashEl.classList.add('on');
+  clearTimeout(deathTimer);
+  deathTimer = setTimeout(() => {
+    gameState = 'destroying';
+    showGameOver();
+  }, 150);
+  console.log('[BOLTWORKS] Game Over - Player destroyed');
+}
+
+function spawnPlayerDestruction() {
+  if (!playerTank) return;
+  const origin = playerTank.position.clone();
+  playerTank.children.forEach((part, i) => {
+    const debris = part.clone(true);
+    debris.position.copy(origin).add(part.position);
+    debris.rotation.copy(playerTank.rotation);
+    scene.add(debris);
+    destructionDebris.push({ mesh: debris, velocity: new THREE.Vector3((i - 2) * .9, 2.8 + i * .35, (i % 2 ? 1 : -1) * .75), spin: (i + 1) * .11, age: 0 });
+  });
+  // The verified rubble asset supplies the visibly broken aftermath rather
+  // than inventing a mesh outside the asset contract.
+  for (let i = 0; i < 4; i++) {
+    const rubble = worldAssets.wall_block_rubble?.clone();
+    if (!rubble) continue;
+    rubble.scale.setScalar(.28);
+    rubble.position.copy(origin).add(new THREE.Vector3((i - 1.5) * .45, .15, (i % 2 ? .35 : -.35)));
+    scene.add(rubble);
+    destructionDebris.push({ mesh: rubble, velocity: new THREE.Vector3((i - 1.5) * .55, 2.1 + i * .2, (i % 2 ? .6 : -.6)), spin: .14, age: 0 });
+  }
+  playerTank.visible = false;
+}
+
+function updateDestructionDebris(dt) {
+  destructionDebris.forEach((debris) => {
+    debris.age += dt;
+    debris.velocity.y -= 7 * dt;
+    debris.mesh.position.addScaledVector(debris.velocity, dt);
+    debris.mesh.rotation.x += debris.spin;
+    debris.mesh.rotation.z += debris.spin * .7;
+  });
+}
+
+function clearDestructionDebris() {
+  destructionDebris.forEach(({ mesh }) => scene.remove(mesh));
+  destructionDebris = [];
+}
+
+function showGameOver() {
+  gameOverStats.textContent = `WAVES SURVIVED ${wave}  •  ENEMIES DESTROYED ${totalKills}`;
+  gameOverScreen.classList.add('on');
+}
+
+function showVictory() {
+  const seconds = Math.max(0, Math.round((performance.now() - runStartedAt) / 1000));
+  victoryStats.textContent = `ENEMIES DESTROYED ${totalKills}  •  TIME ${seconds}s`;
+  victoryScreen.classList.add('on');
+}
+
+function resetRun() {
+  clearTimeout(deathTimer);
+  gameOverScreen.classList.remove('on');
+  victoryScreen.classList.remove('on');
+  flashEl.classList.remove('on');
+  clearDestructionDebris();
+  enemies.forEach((enemy) => scene.remove(enemy.mesh));
+  enemies = [];
+  if (playerTank) scene.remove(playerTank);
+  playerTank = null;
+  currentModules = { hull: 'hull_light', tracks: 'tracks_standard', turret: 'turret_round', barrel: 'barrel_short', armourSide: null, armourFront: null };
+  playerHP = MAX_HP;
+  wave = 1; waveKills = 0; waveTotal = 0; totalKills = 0; gameOver = false; waveWin = false;
+  Object.assign(window.__GAME__, { hp: MAX_HP, wave: 1, kills: 0, alive: 0, over: false, score: 0, pos: [0, 0] });
+  gameStarted = true;
+  gameState = 'transitioning';
+  buildWorldLayout(1);
+  assembleTank({ position: new THREE.Vector3(0, .2, 0), rotationY: 0 }).then(() => startWave(1));
+}
+
+function exitToTitle() {
+  clearTimeout(deathTimer);
+  gameOverScreen.classList.remove('on');
+  victoryScreen.classList.remove('on');
+  flashEl.classList.remove('on');
+  enemies.forEach((enemy) => scene.remove(enemy.mesh));
+  enemies = [];
+  clearDestructionDebris();
+  gameStarted = false;
+  gameState = 'ready';
+  document.getElementById('touch').classList.remove('on');
+  startScreen.classList.add('on');
 }
 
 async function rebuildTank() {
@@ -1319,6 +1433,10 @@ function setupInput() {
   document.getElementById('startb').addEventListener('click', () => {
     window.__START__();
   });
+  document.getElementById('retryb').addEventListener('click', resetRun);
+  document.getElementById('againb').addEventListener('click', resetRun);
+  document.getElementById('gameover-exit').addEventListener('click', exitToTitle);
+  document.getElementById('victory-exit').addEventListener('click', exitToTitle);
   
   // Resize handler
   window.addEventListener('resize', () => {
