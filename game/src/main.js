@@ -187,22 +187,36 @@ async function init() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.35;
+
   // Lighting
-  const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.75);
   scene.add(ambient);
   
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  dirLight.position.set(10, 20, 10);
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  dirLight.position.set(15, 25, 15);
   dirLight.castShadow = true;
   dirLight.shadow.mapSize.width = 2048;
   dirLight.shadow.mapSize.height = 2048;
   dirLight.shadow.camera.near = 0.5;
-  dirLight.shadow.camera.far = 50;
-  dirLight.shadow.camera.left = -20;
-  dirLight.shadow.camera.right = 20;
-  dirLight.shadow.camera.top = 20;
-  dirLight.shadow.camera.bottom = -20;
+  dirLight.shadow.camera.far = 80;
+  dirLight.shadow.camera.left = -32;
+  dirLight.shadow.camera.right = 32;
+  dirLight.shadow.camera.top = 32;
+  dirLight.shadow.camera.bottom = -32;
+  dirLight.shadow.bias = -0.0005;
   scene.add(dirLight);
+
+  // Extended base ground plane to prevent void clipping beyond the arena slab boundary
+  const groundFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(200, 200),
+    new THREE.MeshStandardMaterial({ color: 0x3a3e42, roughness: 0.9 })
+  );
+  groundFloor.rotation.x = -Math.PI / 2;
+  groundFloor.position.y = -0.15;
+  groundFloor.receiveShadow = true;
+  scene.add(groundFloor);
   
   // Shell pool (instanced)
   const shellGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.6, 8);
@@ -805,19 +819,43 @@ function flashEnemy(enemy) {
   });
 }
 
+let flashTexture = null;
+function getFlashTexture() {
+  if (flashTexture) return flashTexture;
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  grad.addColorStop(0.25, 'rgba(143, 180, 216, 0.95)');
+  grad.addColorStop(0.55, 'rgba(143, 180, 216, 0.4)');
+  grad.addColorStop(1, 'rgba(143, 180, 216, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 64, 64);
+  flashTexture = new THREE.CanvasTexture(c);
+  return flashTexture;
+}
+
 function spawnMuzzleFlash() {
-  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x8fb4d8, transparent: true, opacity: .95, depthWrite: false }));
+  const flash = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: getFlashTexture(),
+    color: 0x8fb4d8,
+    transparent: true,
+    opacity: .95,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  }));
   const forward = new THREE.Vector3(Math.sin(playerTank.rotation.y), 0, Math.cos(playerTank.rotation.y));
   flash.position.copy(playerTank.position).addScaledVector(forward, 2.1);
   flash.position.y += 1.45;
-  flash.scale.set(.9, .9, 1);
+  flash.scale.set(1.4, 1.4, 1);
   scene.add(flash);
 
-  const flashLight = new THREE.PointLight(0x8fb4d8, 2.8, 8, 2);
+  const flashLight = new THREE.PointLight(0x8fb4d8, 3.2, 10, 2);
   flashLight.position.copy(flash.position);
   scene.add(flashLight);
 
-  combatFx.push({ type: 'sprite', mesh: flash, light: flashLight, until: performance.now() + 85, born: performance.now(), base: .9 });
+  combatFx.push({ type: 'sprite', mesh: flash, light: flashLight, until: performance.now() + 85, born: performance.now(), base: 1.4 });
 }
 
 function spawnTrackDust(time) {
