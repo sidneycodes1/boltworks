@@ -1173,31 +1173,31 @@ function setupInput() {
     fireBtn.classList.remove('dn');
   });
 
-  // Capture button
-  const capBtn = document.getElementById('bcap');
-  capBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    const canvas = document.getElementById('c');
+  const captureFrame = (source) => {
     renderer.render(scene, camera);
     const dataURL = canvas.toDataURL('image/png');
     const a = document.createElement('a');
     a.href = dataURL;
     a.download = `boltworks_frame_${Date.now()}.png`;
     a.click();
-    console.log('[BOLTWORKS] Frame captured');
+    console.log(`[BOLTWORKS] Frame captured via ${source}`);
+  };
+
+  // Capture button. A touch produces a synthetic click on many mobile browsers,
+  // so explicitly suppress that click after handling the touch ourselves.
+  const capBtn = document.getElementById('bcap');
+  let lastCaptureTouch = -Infinity;
+  capBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (performance.now() - lastCaptureTouch < 750) return;
+    captureFrame('CAP button');
   });
 
   capBtn.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    const canvas = document.getElementById('c');
-    renderer.render(scene, camera);
-    const dataURL = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = dataURL;
-    a.download = `boltworks_frame_${Date.now()}.png`;
-    a.click();
-    console.log('[BOLTWORKS] Frame captured');
-  });
+    lastCaptureTouch = performance.now();
+    captureFrame('CAP touch');
+  }, { passive: false });
 
   // Keyboard fallback for desktop
   const keys = {};
@@ -1207,6 +1207,7 @@ function setupInput() {
   });
   window.addEventListener('keyup', (e) => {
     keys[e.code] = false;
+    if (e.code === 'KeyC') window.__CAPTURE_TRIGGERED__ = false;
     updateKeys();
   });
   
@@ -1227,27 +1228,13 @@ function setupInput() {
     // Debug: capture frame with 'C' key
     if (keys['KeyC'] && !window.__CAPTURE_TRIGGERED__) {
       window.__CAPTURE_TRIGGERED__ = true;
-      const canvas = document.getElementById('c');
-      renderer.render(scene, camera);
-      const dataURL = canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = dataURL;
-      a.download = `boltworks_frame_${Date.now()}.png`;
-      a.click();
-      console.log('[BOLTWORKS] Frame captured via keyboard');
+      captureFrame('keyboard');
     }
   }
 
   // Console command: window.captureFrame()
   window.captureFrame = () => {
-    const canvas = document.getElementById('c');
-    renderer.render(scene, camera);
-    const dataURL = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = dataURL;
-    a.download = `boltworks_frame_${Date.now()}.png`;
-    a.click();
-    console.log('[BOLTWORKS] Frame captured via console');
+    captureFrame('console');
   };
   
   // Start button
