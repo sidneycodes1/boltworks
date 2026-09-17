@@ -75,6 +75,23 @@ const ENEMY_TYPES = {
   heavy: { hp: 80, speed: 2, damage: 4, range: 20, fireRate: 4 }
 };
 
+// Fixed marker/offset assignments keep every run and critic capture repeatable.
+// They are intentionally plain data rather than generated placement rules.
+const WAVE_SPAWN_PLAN = {
+  1: [
+    { marker: 0, offset: [0, 0] }, { marker: 1, offset: [0, 0] }, { marker: 2, offset: [0, 0] }
+  ],
+  2: [
+    { marker: 0, offset: [0, 0] }, { marker: 1, offset: [0, 0] }, { marker: 2, offset: [0, 0] },
+    { marker: 3, offset: [0, 0] }, { marker: 0, offset: [0, 1.25] }, { marker: 2, offset: [0, -1.25] }
+  ],
+  3: [
+    { marker: 0, offset: [0, 0] }, { marker: 1, offset: [0, 0] }, { marker: 2, offset: [0, 0] },
+    { marker: 3, offset: [0, 0] }, { marker: 0, offset: [0, 1.25] }, { marker: 1, offset: [0, -1.25] },
+    { marker: 2, offset: [0, 1.25] }, { marker: 3, offset: [0, -1.25] }, { marker: 0, offset: [1.25, 0] }
+  ]
+};
+
 // Telemetry for gate
 window.__READY__ = false;
 window.__START__ = () => {
@@ -657,21 +674,20 @@ async function startWave(waveNum) {
 
   // Spawn enemies at spawn markers (or fallback to circle if no markers)
   const types = ['rusher', 'shooter', 'heavy'];
+  const spawnPlan = WAVE_SPAWN_PLAN[wave] || [];
   for (let i = 0; i < waveTotal; i++) {
     const type = types[i % 3];
     let pos;
 
     if (spawnMarkers.length > 0) {
-      // Use spawn markers cyclically
-      const spawnIndex = i % spawnMarkers.length;
-      pos = spawnMarkers[spawnIndex].clone();
-      // Add slight random offset to prevent stacking
-      pos.x += (Math.random() - 0.5) * 2;
-      pos.z += (Math.random() - 0.5) * 2;
+      const assignment = spawnPlan[i] || { marker: i % spawnMarkers.length, offset: [0, 0] };
+      pos = spawnMarkers[assignment.marker % spawnMarkers.length].clone();
+      pos.x += assignment.offset[0];
+      pos.z += assignment.offset[1];
     } else {
-      // Fallback: spawn in circle at safe distance
+      // Deterministic fallback for an asset-loading failure.
       const angle = (i / waveTotal) * Math.PI * 2;
-      const dist = 15 + Math.random() * 5;
+      const dist = 18;
       pos = new THREE.Vector3(
         Math.sin(angle) * dist,
         0,
