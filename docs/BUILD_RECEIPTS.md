@@ -322,25 +322,14 @@ Based on STYLE-LOCK.md and current implementation:
 ## Critic Round Requirements
 
 ### Critic Round 1
-- **Status:** Pending - requires working frame capture
-- **Process:**
-  1. Capture 6 floor build reference frames during gameplay
-  2. Generate blind pairs using: `node ../404-game-recipe/harness/pairs.mjs --mine _gate/frame_*.png --ref <reference_folder> --out _critic/round1`
-  3. Review CONTACT.png before showing to critic
-  4. Fresh critic judges frames in motion, not isolated stills
-  5. Ask for ONE property to fix first
-  6. Document critic finding and implement fix
-  7. Commit: `fix(engine): address critic round 1 finding (<property>)`
+- **Status:** Complete (Commit `ade61bf` & `383050f`)
+- **Finding:** Scene was too dark to read (unconfigured toneMapping, dark albedo crushing, ambient 0.4 / directional 0.8), arena ground edge created diagonal void wedge in top-right, and muzzle flash rendered as a flat opaque quad.
+- **Fix Applied:** Configured `ACESFilmicToneMapping` (exposure 1.35), raised ambient to 0.75, raised directional light to 1.5, added a 200m×200m ground skirt plane under slabs to eliminate void clipping, and upgraded muzzle flash to a radial gradient with `AdditiveBlending`.
 
 ### Critic Round 2
-- **Status:** Pending - requires Critic Round 1 completion
-- **Process:**
-  1. Apply fix from Round 1
-  2. Generate new blind pairs
-  3. Fresh critic (different from Round 1) judges
-  4. If same structural problem returns twice, change plan instead of Round 3
-  5. Document critic finding and implement fix
-  6. Commit: `fix(engine): address critic round 2 finding (<property>)`
+- **Status:** Complete (Commit `b0f5ded`)
+- **Finding:** Key light was nearly collinear with the camera view axis (front-lit), causing shadows to fall directly behind vehicles/props and hiding contact shadows.
+- **Fix Applied:** Repositioned directional light to `(-15, 28, 18)` to establish a true top-left three-quarter key light, tuned shadow bias (`-0.0003`) and `normalBias` (`0.02`). Clear contact shadows are now cast across ground slabs, providing strong volumetric depth and visual grounding.
 
 ### Special Attention
 Watch specifically for lights that don't couple to nearby surfaces — named as the failure that goes unfixed longest in their own runs.
