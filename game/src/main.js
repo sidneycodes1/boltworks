@@ -55,6 +55,7 @@ let worldRoot = null;
 let worldGrid = []; // 12x12 grid: 0 = empty, 1 = wall, 2 = barrier, 3 = spawn
 const GRID_SIZE = 12;
 const CELL_SIZE = 4; // metres
+const WALL_HALF_EXTENT = 0.5; // wall_block is a 1m cube
 let spawnMarkers = [];
 
 // Module assembly state
@@ -293,6 +294,7 @@ async function init() {
     playerTank.position.y = 0.2;
     playerTank.castShadow = true;
     scene.add(playerTank);
+    playerTank.userData.collisionRadius = measureTankCollisionRadius(playerTank);
 
     console.log('[BOLTWORKS] Tank added to scene');
 
@@ -500,6 +502,7 @@ function spawnEnemy(type, position) {
   enemy.mesh.position.copy(position);
   enemy.mesh.castShadow = true;
   scene.add(enemy.mesh);
+  enemy.collisionRadius = measureTankCollisionRadius(enemy.mesh);
 
   enemies.push(enemy);
   window.__GAME__.alive = enemies.length;
@@ -517,7 +520,7 @@ function updateEnemies(dt) {
       // Rush straight at player
       toPlayer.normalize();
       const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * dt);
-      if (!checkWallCollision(newPos)) {
+      if (!checkWallCollision(newPos, enemy.collisionRadius)) {
         enemy.mesh.position.copy(newPos);
       }
       enemy.mesh.lookAt(playerTank.position);
@@ -526,13 +529,13 @@ function updateEnemies(dt) {
       if (dist > config.range) {
         toPlayer.normalize();
         const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * dt);
-        if (!checkWallCollision(newPos)) {
+        if (!checkWallCollision(newPos, enemy.collisionRadius)) {
           enemy.mesh.position.copy(newPos);
         }
       } else if (dist < config.range * 0.7) {
         toPlayer.normalize();
         const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, -config.speed * dt);
-        if (!checkWallCollision(newPos)) {
+        if (!checkWallCollision(newPos, enemy.collisionRadius)) {
           enemy.mesh.position.copy(newPos);
         }
       }
@@ -547,7 +550,7 @@ function updateEnemies(dt) {
       // Slow advance, heavy fire
       toPlayer.normalize();
       const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * dt);
-      if (!checkWallCollision(newPos)) {
+      if (!checkWallCollision(newPos, enemy.collisionRadius)) {
         enemy.mesh.position.copy(newPos);
       }
       enemy.mesh.lookAt(playerTank.position);
@@ -836,6 +839,7 @@ function assembleTank(transform) {
     });
 
     scene.add(playerTank);
+    playerTank.userData.collisionRadius = measureTankCollisionRadius(playerTank);
 
     // Animate assembly
     const duration = 1000; // 1 second assembly
@@ -1104,23 +1108,43 @@ function placeWorldObjects() {
   console.log('[BOLTWORKS] World layout built:', wallCount, 'walls,', barrierCount, 'barriers,', spawnCount, 'spawns');
 }
 
-function checkWallCollision(position) {
+function measureTankCollisionRadius(tank) {
+  const bounds = new THREE.Box3().setFromObject(tank);
+  const size = bounds.getSize(new THREE.Vector3());
+  // A circle based on the actual rendered footprint stays stable as the tank
+  // turns, unlike a world-aligned bounding box that changes with rotation.
+  return Math.max(0.45, Math.hypot(size.x, size.z) * 0.5);
+}
+
+function checkWallCollision(position, radius = playerTank?.userData.collisionRadius || 1) {
   // If world grid is not initialized, no collision
   if (worldGrid.length === 0) return false;
 
-  // Convert world position to grid coordinates
   const offset = (GRID_SIZE * CELL_SIZE) / 2 - CELL_SIZE / 2;
-  const gridX = Math.floor((position.x + offset) / CELL_SIZE);
-  const gridZ = Math.floor((position.z + offset) / CELL_SIZE);
+  const arenaHalf = GRID_SIZE * CELL_SIZE * 0.5;
+  if (Math.abs(position.x) + radius > arenaHalf || Math.abs(position.z) + radius > arenaHalf) return true;
 
-  // Check bounds
-  if (gridX < 0 || gridX >= GRID_SIZE || gridZ < 0 || gridZ >= GRID_SIZE) {
-    return true; // Out of bounds counts as collision
+  // Test the tank's circular footprint against the actual wall cube bounds.
+  // Grid cells only choose placement; they are not four-metre-wide colliders.
+  const minX = Math.max(0, Math.floor((position.x - radius + offset) / CELL_SIZE));
+  const maxX = Math.min(GRID_SIZE - 1, Math.floor((position.x + radius + offset) / CELL_SIZE));
+  const minZ = Math.max(0, Math.floor((position.z - radius + offset) / CELL_SIZE));
+  const maxZ = Math.min(GRID_SIZE - 1, Math.floor((position.z + radius + offset) / CELL_SIZE));
+
+  for (let x = minX; x <= maxX; x++) {
+    for (let z = minZ; z <= maxZ; z++) {
+      if (worldGrid[x][z] !== 1) continue;
+      const wallX = x * CELL_SIZE - offset;
+      const wallZ = z * CELL_SIZE - offset;
+      const nearestX = THREE.MathUtils.clamp(position.x, wallX - WALL_HALF_EXTENT, wallX + WALL_HALF_EXTENT);
+      const nearestZ = THREE.MathUtils.clamp(position.z, wallZ - WALL_HALF_EXTENT, wallZ + WALL_HALF_EXTENT);
+      if (Math.hypot(position.x - nearestX, position.z - nearestZ) < radius) return true;
+    }
   }
 
-  // Check if cell has wall or barrier
-  const cell = worldGrid[gridX][gridZ];
-  return cell === 1 || cell === 2; // 1 = wall, 2 = barrier
+  // Low barriers are deliberate visual cover: tanks and enemy shots pass over
+  // them, while full wall blocks remain solid.
+  return false;
 }
 
 // Input handling
