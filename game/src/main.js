@@ -51,6 +51,7 @@ let savedTankTransform = null;
 
 // World state
 let worldAssets = {};
+let worldRoot = null;
 let worldGrid = []; // 12x12 grid: 0 = empty, 1 = wall, 2 = barrier, 3 = spawn
 const GRID_SIZE = 12;
 const CELL_SIZE = 4; // metres
@@ -893,22 +894,55 @@ function buildWorldLayout(waveNum) {
 }
 
 function clearWorld() {
-  // Remove all world objects from scene (keep player tank, shells, enemies, lights)
-  const toRemove = [];
-  scene.children.forEach(child => {
-    if (child !== playerTank &&
-        !child.isInstancedMesh &&
-        !enemies.some(e => e.mesh === child) &&
-        !child.isLight &&
-        child.type !== 'Plane' &&
-        child.type !== 'GridHelper') {
-      toRemove.push(child);
-    }
-  });
-  toRemove.forEach(child => scene.remove(child));
+  // Static arena geometry lives under one root. Removing that root prevents
+  // previous-wave instances from accumulating while leaving the shell pool,
+  // lights, player, and enemies untouched.
+  if (worldRoot) scene.remove(worldRoot);
+  worldRoot = new THREE.Group();
+  worldRoot.name = 'world-root';
+  scene.add(worldRoot);
 
   // Clear spawn markers
   spawnMarkers = [];
+}
+
+/**
+ * Instancing works on meshes, whereas generated assets arrive as Groups that
+ * can contain more than one material/mesh. Create one InstancedMesh for each
+ * mesh part of an asset type, sharing its geometry and material across every
+ * placement. This preserves the complete authored asset while removing the
+ * clone-per-prop draw-call cost.
+ */
+function addInstancedWorldAsset(asset, placements, name) {
+  if (!asset || placements.length === 0) return;
+
+  asset.updateMatrixWorld(true);
+  const parts = [];
+  asset.traverse((node) => {
+    if (node.isMesh && node.geometry && node.material && !Array.isArray(node.material)) {
+      parts.push({ geometry: node.geometry, material: node.material, matrix: node.matrixWorld.clone() });
+    }
+  });
+
+  const transform = new THREE.Object3D();
+  const matrix = new THREE.Matrix4();
+  parts.forEach((part, partIndex) => {
+    const instances = new THREE.InstancedMesh(part.geometry, part.material, placements.length);
+    instances.name = `${name}-instances-${partIndex}`;
+    instances.castShadow = true;
+    instances.receiveShadow = true;
+
+    placements.forEach((placement, i) => {
+      transform.position.copy(placement.position);
+      transform.rotation.set(0, placement.rotation || 0, 0);
+      transform.scale.setScalar(placement.scale || 1);
+      transform.updateMatrix();
+      matrix.copy(transform.matrix).multiply(part.matrix);
+      instances.setMatrixAt(i, matrix);
+    });
+    instances.instanceMatrix.needsUpdate = true;
+    worldRoot.add(instances);
+  });
 }
 
 function createArenaLayout(waveNum) {
@@ -1020,69 +1054,52 @@ function placeWorldObjects() {
     }
   }
 
-  // Place objects by cloning (not instanced for now due to Group structure)
+  const walls = [];
+  const barriers = [];
+  const spawns = [];
+  const slabs = [];
+
+  // Collect placements first, then instance each generated asset type.
   for (let x = 0; x < GRID_SIZE; x++) {
     for (let z = 0; z < GRID_SIZE; z++) {
       const worldX = x * CELL_SIZE - offset;
       const worldZ = z * CELL_SIZE - offset;
+      slabs.push({ position: new THREE.Vector3(worldX, -0.1, worldZ) });
 
       if (worldGrid[x][z] === 1) {
-        const wall = worldAssets.wall_block.clone();
-        wall.position.set(worldX, 0.5, worldZ);
-        wall.castShadow = true;
-        wall.receiveShadow = true;
-        scene.add(wall);
+        walls.push({ position: new THREE.Vector3(worldX, 0, worldZ) });
       } else if (worldGrid[x][z] === 2) {
-        const barrier = worldAssets.barrier_low.clone();
-        barrier.position.set(worldX, 0.4, worldZ);
-        barrier.castShadow = true;
-        barrier.receiveShadow = true;
-        scene.add(barrier);
+        barriers.push({ position: new THREE.Vector3(worldX, 0, worldZ), rotation: (x + z) % 2 ? 0 : Math.PI / 2 });
       } else if (worldGrid[x][z] === 3) {
-        const spawn = worldAssets.spawn_marker.clone();
-        spawn.position.set(worldX, 0.05, worldZ);
-        scene.add(spawn);
+        spawns.push({ position: new THREE.Vector3(worldX, 0.05, worldZ) });
         spawnMarkers.push(new THREE.Vector3(worldX, 0, worldZ));
       }
     }
   }
 
-  // Add ground slabs
-  for (let x = 0; x < GRID_SIZE; x++) {
-    for (let z = 0; z < GRID_SIZE; z++) {
-      const slab = worldAssets.ground_slab.clone();
-      slab.position.set(x * CELL_SIZE - offset, -0.1, z * CELL_SIZE - offset);
-      slab.receiveShadow = true;
-      scene.add(slab);
-    }
-  }
-
-  // Add scattered set-dressing (crates and fuel drums)
+  // Deterministic set dressing: props remain visual only and never occupy a
+  // collision cell. The type and rotation are fixed for reproducible captures.
   const dressingPositions = [
     [2, 2], [9, 2], [2, 9], [9, 9], [5, 2], [6, 2], [5, 9], [6, 9]
   ];
+  const crates = [];
+  const drums = [];
 
-  dressingPositions.forEach(([x, z]) => {
+  dressingPositions.forEach(([x, z], i) => {
     if (worldGrid[x][z] === 0) { // Only place on empty cells
       const worldX = x * CELL_SIZE - offset;
       const worldZ = z * CELL_SIZE - offset;
-
-      // Randomly choose crate or fuel drum
-      if (Math.random() > 0.5) {
-        const crate = worldAssets.crate_supply.clone();
-        crate.position.set(worldX, 0, worldZ);
-        crate.castShadow = true;
-        crate.receiveShadow = true;
-        scene.add(crate);
-      } else {
-        const drum = worldAssets.fuel_drum.clone();
-        drum.position.set(worldX, 0, worldZ);
-        drum.castShadow = true;
-        drum.receiveShadow = true;
-        scene.add(drum);
-      }
+      const placement = { position: new THREE.Vector3(worldX, 0, worldZ), rotation: i * Math.PI / 2 };
+      (i % 2 === 0 ? crates : drums).push(placement);
     }
   });
+
+  addInstancedWorldAsset(worldAssets.ground_slab, slabs, 'ground-slab');
+  addInstancedWorldAsset(worldAssets.wall_block, walls, 'wall-block');
+  addInstancedWorldAsset(worldAssets.barrier_low, barriers, 'barrier-low');
+  addInstancedWorldAsset(worldAssets.spawn_marker, spawns, 'spawn-marker');
+  addInstancedWorldAsset(worldAssets.crate_supply, crates, 'crate-supply');
+  addInstancedWorldAsset(worldAssets.fuel_drum, drums, 'fuel-drum');
 
   console.log('[BOLTWORKS] World layout built:', wallCount, 'walls,', barrierCount, 'barriers,', spawnCount, 'spawns');
 }
