@@ -44,6 +44,7 @@ let renderer = null;
 let scene = null;
 let lastTime = 0;
 let input = { x: 0, y: 0, fire: false };
+let currentVelocity = new THREE.Vector2(0, 0);
 
 // Combat state
 let shells = [];
@@ -522,28 +523,36 @@ function loop(time) {
     return;
   }
 
-  // Update tank position based on input — rotated into camera space
-  // ISO_ANGLE is derived from the actual camera offset (CAMERA_FOLLOW_OFFSET).
-  // We rotate by -ISO_ANGLE so that screen-up (input.y = -1) maps to world
-  // -X -Z (away from the camera / toward the top of the screen).
+  // Update tank position based on input — rotated into camera space with smoothing
   const speed = 5; // m/s
-  if (input.x !== 0 || input.y !== 0) {
-    const moveX = (input.x * Math.cos(-ISO_ANGLE) - input.y * Math.sin(-ISO_ANGLE)) * speed * dt;
-    const moveZ = (input.x * Math.sin(-ISO_ANGLE) + input.y * Math.cos(-ISO_ANGLE)) * speed * dt;
-
-    // Check wall collision before moving
+  // Target velocity in world space (rotated by -ISO_ANGLE)
+  const targetVelX = (input.x * Math.cos(-ISO_ANGLE) - input.y * Math.sin(-ISO_ANGLE)) * speed;
+  const targetVelZ = (input.x * Math.sin(-ISO_ANGLE) + input.y * Math.cos(-ISO_ANGLE)) * speed;
+  // Frame-rate-independent velocity smoothing
+  const velLerp = 1 - Math.exp(-dt * 10);
+  currentVelocity.x += (targetVelX - currentVelocity.x) * velLerp;
+  currentVelocity.y += (targetVelZ - currentVelocity.y) * velLerp;
+  const moveX = currentVelocity.x * dt;
+  const moveZ = currentVelocity.y * dt;
+  if (Math.abs(moveX) > 0.0001 || Math.abs(moveZ) > 0.0001) {
     const newX = playerTank.position.x + moveX;
     const newZ = playerTank.position.z + moveZ;
-
     if (!checkWallCollision(new THREE.Vector3(newX, 0, newZ))) {
       playerTank.position.x = newX;
       playerTank.position.z = newZ;
+    } else {
+      // Hit wall — damp velocity against wall
+      currentVelocity.x *= 0.5;
+      currentVelocity.y *= 0.5;
     }
-
-    // Rotate tank to face movement direction (use rotated vector)
-    if (Math.abs(moveX) > 0.01 || Math.abs(moveZ) > 0.01) {
-      const angle = Math.atan2(moveX, moveZ);
-      playerTank.rotation.y = angle;
+    // Smooth turn toward movement direction (shortest angle, capped rate)
+    if (currentVelocity.length() > 0.1) {
+      const targetAngle = Math.atan2(currentVelocity.x, currentVelocity.y);
+      let delta = targetAngle - playerTank.rotation.y;
+      delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+      const maxTurn = 5 * dt; // rad/s
+      delta = Math.max(-maxTurn, Math.min(maxTurn, delta));
+      playerTank.rotation.y += delta;
     }
   }
 
@@ -565,12 +574,13 @@ function loop(time) {
   // Check win/lose conditions
   checkGameState();
 
-  // Update camera to follow tank
-  camera.position.set(
+  // Update camera to follow tank — smoothed
+  const targetCamPos = new THREE.Vector3(
     playerTank.position.x + CAMERA_FOLLOW_OFFSET,
     playerTank.position.y + CAMERA_FOLLOW_OFFSET,
     playerTank.position.z + CAMERA_FOLLOW_OFFSET
   );
+  camera.position.lerp(targetCamPos, 1 - Math.exp(-dt * 5));
   camera.lookAt(playerTank.position);
 
   // Update telemetry
@@ -1151,6 +1161,7 @@ function resetRun() {
   enemies = [];
   if (playerTank) scene.remove(playerTank);
   playerTank = null;
+  currentVelocity.set(0, 0);
   currentModules = { hull: 'hull_light', tracks: 'tracks_standard', turret: 'turret_round', barrel: 'barrel_short', armourSide: null, armourFront: null };
   playerHP = MAX_HP;
   wave = 1; waveKills = 0; waveTotal = 0; totalKills = 0; gameOver = false; waveWin = false;
@@ -1169,6 +1180,7 @@ function exitToTitle() {
   enemies.forEach((enemy) => scene.remove(enemy.mesh));
   enemies = [];
   clearDestructionDebris();
+  currentVelocity.set(0, 0);
   gameStarted = false;
   gameState = 'ready';
   document.getElementById('touch').classList.remove('on');
