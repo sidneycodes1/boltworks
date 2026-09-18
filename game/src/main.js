@@ -1157,6 +1157,37 @@ function resetRun() {
   victoryScreen.classList.remove('on');
   flashEl.classList.remove('on');
   clearDestructionDebris();
+  // Fully reset combat/fx/input state so retry during active combat doesn't leave stray shells or stuck FX
+  shells.forEach((s, i) => {
+    s.active = false;
+    s.owner = null;
+    s.lifetime = 0;
+    s.velocity.set(0, 0, 0);
+  });
+  if (shellMesh) {
+    const dummy = new THREE.Object3D();
+    dummy.position.set(0, -100, 0);
+    dummy.updateMatrix();
+    for (let i = 0; i < shells.length; i++) shellMesh.setMatrixAt(i, dummy.matrix);
+    shellMesh.instanceMatrix.needsUpdate = true;
+  }
+  combatFx.forEach(fx => {
+    if (fx.mesh) scene.remove(fx.mesh);
+    if (fx.light) scene.remove(fx.light);
+    if (fx.type === 'material' && fx.material) {
+      fx.material.emissive.copy(fx.emissive);
+      fx.material.emissiveIntensity = fx.intensity;
+    }
+  });
+  combatFx = [];
+  hitStopUntil = 0;
+  shakeUntil = 0;
+  shakeMagnitude = 0;
+  lastDustAt = 0;
+  lastPlayerImpactAt = 0;
+  lastFireTime = 0;
+  input.x = 0; input.y = 0; input.fire = false;
+  currentVelocity.set(0, 0);
   enemies.forEach((enemy) => scene.remove(enemy.mesh));
   enemies = [];
   if (playerTank) scene.remove(playerTank);
