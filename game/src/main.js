@@ -1783,8 +1783,12 @@ function setupInput() {
   
   // Start button
   document.getElementById('startb').addEventListener('click', () => {
+    audio.init();
     window.__START__();
   });
+  // iOS Safari requires unlock on touchstart directly, not click (300ms delay)
+  document.getElementById('startb').addEventListener('touchstart', () => { audio.init(); }, { passive: true });
+  document.addEventListener('touchstart', () => { audio.init(); }, { once: true, passive: true });
   document.getElementById('retryb').addEventListener('click', () => { audio.init(); resetRun(); });
   document.getElementById('againb').addEventListener('click', () => { audio.init(); resetRun(); });
   document.getElementById('gameover-exit').addEventListener('click', exitToTitle);

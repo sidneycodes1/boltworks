@@ -22,6 +22,15 @@ export class BoltAudio {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') {
         this.ctx.resume();
+        // Synchronous silent buffer play for iOS WebKit unlock — must be in the same call as the gesture
+        try {
+          const buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate);
+          const source = this.ctx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(this.ctx.destination);
+          source.start(0);
+          source.stop(0.01);
+        } catch (e) {}
       }
       return;
     }
@@ -48,6 +57,15 @@ export class BoltAudio {
     this._initEngineHum();
     this.ok = true;
     this._startBgm();
+    // Synchronous silent buffer play for iOS WebKit unlock
+    try {
+      const buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate);
+      const source = this.ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.ctx.destination);
+      source.start(0);
+      source.stop(0.01);
+    } catch (e) {}
   }
 
   _createNoiseBuffer(seconds) {
