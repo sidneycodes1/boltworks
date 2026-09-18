@@ -719,6 +719,15 @@ function spawnEnemy(type, position) {
 
   enemy.mesh.add(hull);
   enemy.mesh.add(turret);
+  // Distinct accent per type so enemies read apart at a glance (dimmer than player's warm accent)
+  {
+    const accentColors = { rusher: 0x6b7a8a, shooter: 0x5c6874, heavy: 0x8b5a4a };
+    const col = accentColors[type] || 0x6b7a8a;
+    const accentMat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.12, roughness: 0.6 });
+    const accent = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.04, 0.32), accentMat);
+    accent.position.set(0, 0.62, 0);
+    enemy.mesh.add(accent);
+  }
   enemy.mesh.traverse((node) => {
     if (node.isMesh && node.material && !Array.isArray(node.material)) node.material = node.material.clone();
   });
