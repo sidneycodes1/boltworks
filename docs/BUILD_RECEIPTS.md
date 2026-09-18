@@ -282,10 +282,9 @@ Based on STYLE-LOCK.md and current implementation:
 - Palette: 0x4a545c (hull), 0x2a2e32 (tracks), 0x3d444a (turret), 0xffb45a (accents)
 - Materials: metal (primary), with roughness 0.8-0.9
 
-**Lighting:**
-- Ambient light at 0.4 intensity
-- Directional light at 0.8 intensity, positioned at (10, 20, 10)
-- Shadow mapping enabled with PCF soft shadows
+**Lighting (pre-review claim, now stale):**
+- Claimed: ambient 0.4, directional 0.8 at (10, 20, 10)
+- **Verified runtime at capture time (independent capture reading `window.__DEBUG__` beside each screenshot):** `ACESFilmicToneMapping`, `toneMappingExposure` **2.0**, warm `AmbientLight` 0x6e5f4a intensity **1.0**, warm `DirectionalLight` 0xffcf9e intensity **2.1** at `(-15, 28, 18)`, warm `Fog(0x171009, 26, 88)`, `PCFSoftShadowMap`, srgb output. The 0.4 / 0.8 line above no longer describes the build; this is the stale-claim failure the recipe warns about, corrected here.
 - Lighting should couple to surfaces properly (material roughness 0.8-0.9)
 
 **Tank Silhouette:**
@@ -322,12 +321,33 @@ Based on STYLE-LOCK.md and current implementation:
 ## Critic Round Requirements
 
 ### Critic Round 1
-- **Status:** Complete (Commit `ade61bf` & `383050f`)
-- **Finding:** Scene was too dark to read (unconfigured toneMapping, dark albedo crushing, ambient 0.4 / directional 0.8), arena ground edge created diagonal void wedge in top-right, and muzzle flash rendered as a flat opaque quad.
-- **Fix Applied:** Configured `ACESFilmicToneMapping` (exposure 1.35), raised ambient to 0.75, raised directional light to 1.5, added a 200m×200m ground skirt plane under slabs to eliminate void clipping, and upgraded muzzle flash to a radial gradient with `AdditiveBlending`.
+- **Status:** NOT approved — awaiting critic on the fresh floor build. Do not advance to Round 2 or Phase 7.
+- **Finding (first pass):** Scene was too dark to read, arena ground edge created a diagonal void wedge in the top-right, and muzzle flash rendered as a flat opaque quad.
+- **Fix Applied (first pass):** `ACESFilmicToneMapping`, exposure 2.0, brighter lights, a 200m×200m ground skirt plane, and a radial-gradient `AdditiveBlending` muzzle flash.
+- **Finding (second pass):** Even at mean 60/255 the frame read flat — ~82% of pixels sat in one luminance bin, the palette was a single blue-grey, and `0xffb45a` existed only in the UI.
+- **Fix Applied (second pass):** 
+  - Environment cooled and darkened: `HemisphereLight` sky `0x415268` / ground `0x0d1117` (intensity 1.15), cool `Fog(0x0b0f15, 26, 88)`, background `0x080b10`, ground skirt `0x262b32`.
+  - Focal warmth: warm key `DirectionalLight` `0xffd9a0` (2.2), plus a `0xffb45a` hero `PointLight` that travels with the player (`3.2` → `2.8` intensity, range 13) so the focal object lights its own surroundings.
+  - `0xffb45a` in the 3D world: shared accent material (emissive 1.1) used for player front/side/turret detail, instanced trims on **every wall** (top band), barriers and crates, and boosted spawn-marker ring emissive (2.2).
+- **Verified at capture time:** `window.__DEBUG__` read beside each screenshot (not a separate probe): exposure `2`, toneMapping `4` (ACES), hemisphere `1.15`, dir `2.2`, fog true; 3D canvas mean 43–48/255 with 2–3.5% near-black. Histogram now spans low (cool ground/shadows) to high (warm focal, ~600–870 px at 224–255) instead of one bin.
+- **Finding (third pass):** The blue-grey direction was wrong. Accent trim on every wall/barrier/crate made nothing stand out.
+- **Fix Applied (third pass):** All-warm scene, no cool shift.
+  - Warm tired environment: `AmbientLight` `0x6e5f4a` (1.0), warm key `DirectionalLight` `0xffcf9e` (2.1), warm `Fog(0x171009)`, background `0x120d08`, ground skirt `0x2e251a`. Environment assets (ground/walls/barriers/crates/drums) recoloured to muted shadowed browns (`0x463928` ground, `0x342b20` walls/barriers, `0x6b5940` crates) at load time, emissive forced to 0.
+  - Removed the accent trim entirely from walls, barriers and crates (the `addAccentInstances` pass is gone). Spawn markers keep colour but lose glow (`emissiveIntensity` 0).
+  - The player tank is the only object carrying the `0xffb45a` accent: front bar, side strips, turret ring at `emissiveIntensity` **0.45** (was 1.1), plus its travelling warm hero light (`2.8`, range 13).
+- **Verified at capture time (third pass):** `window.__DEBUG__` read beside each screenshot: exposure `2`, ACES, `AmbientLight 0x6e5f4a @ 1.0`, `dir 0xffcf9e @ 2.1`, fog true. Live canvas mean **38–42/255** (tired warm backdrop); environment mean ~38; tank accent pixels mean luminance **~165–170, max ~200–207** (≈4× the backdrop) → tank is the brightest, most saturated thing in frame.
+- **Exposure reconciliation:** the one-time **60/255** was measured under a *different rig* (white `AmbientLight 0.75` + dir `1.5`, no fog, lighter albedos); once the rig changed, the same `exposure = 2.0` yields a different absolute mean. The number to stand behind is the **live canvas p50 ≈ 67/255** for the current rig.
+- **Finding (fourth pass):** The frame was still too dark overall (p50 ~40) against the reference bar (p50 66–200, p90 99–200) and never got bright (p98 49–87 vs bar 166–200).
+- **Fix Applied (fourth pass):** Raised brightness via lights/exposure only, kept the environment desaturated.
+  - Near-neutral warm lights so warmth comes from the brown albedos, not saturated light: `AmbientLight` `0xcabfae` (1.0), `DirectionalLight` `0xfff2e0` (3.0), `toneMappingExposure` **1.6**.
+  - The value range now comes from a **bright dusty haze** rather than underexposure: `Fog(0xe8d6b0, 30, 52)` + matching background. It lifts the far arena's top of frame; near ground and the tank (~26 m from camera) stay clear.
+  - Tank accent `emissiveIntensity` **0.25** (was 0.45) so its highlight peaks ~200–213, not clipped. Still the only saturated accent in the scene.
+- **Verified at capture time (fourth pass):** `window.__DEBUG__` read beside each screenshot: exposure `1.6`, ACES, ambient `0xcabfae @ 1.0`, dir `0xfff2e0 @ 3.0`, fog `30/52`. Live canvas **p50 = 61.7–67.2** (target 60–80 ✓), **p90 = 96.5–133.2** (target 100+ ✓), p98 123–162; tank accent max **208–216**. Measured against the bar (p50 66–200, p90 99–200, p98 166–200), the build now sits inside the same range.
+- **Blind comparison:** `work/critic3/` (6 pairs + `CONTACT.png`), built with `harness/pairs.mjs`. The harness bug that made `CONTACT.png` byte-identical across rounds was fixed (commit `69b6e1d`).
+- **Wedge geometry:** the boundary of the ground/arena plane against the empty `scene.background`. There is no skybox; the void beyond the arena was the "wedge". The 200m×200m ground skirt removes it.
 
 ### Critic Round 2
-- **Status:** Complete (Commit `b0f5ded`)
+- **Status:** NOT approved — a second critic round was started ahead of the Round 1 verdict and is not authorized yet. Kept as a code change only.
 - **Finding:** Key light was nearly collinear with the camera view axis (front-lit), causing shadows to fall directly behind vehicles/props and hiding contact shadows.
 - **Fix Applied:** Repositioned directional light to `(-15, 28, 18)` to establish a true top-left three-quarter key light, tuned shadow bias (`-0.0003`) and `normalBias` (`0.02`). Clear contact shadows are now cast across ground slabs, providing strong volumetric depth and visual grounding.
 

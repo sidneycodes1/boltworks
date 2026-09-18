@@ -81,6 +81,81 @@ const CELL_SIZE = 4; // metres
 const WALL_HALF_EXTENT = 0.5; // wall_block is a 1m cube
 let spawnMarkers = [];
 
+// STYLE-LOCK accent. It must live in the 3D world, not only the UI: player
+// focal details, world trims and the hero light all share this one hue so warm
+// always reads as "the point of focus" against the cool blue-grey environment.
+const ACCENT_HEX = 0xffb45a;
+let accentMat = null;
+function getAccentMaterial() {
+  if (!accentMat) {
+    accentMat = new THREE.MeshStandardMaterial({
+      color: ACCENT_HEX, emissive: ACCENT_HEX, emissiveIntensity: 0.25,
+      roughness: 0.45, metalness: 0.1
+    });
+    accentMat.name = 'accent';
+  }
+  return accentMat;
+}
+
+let playerHeroLight = null;
+function addPlayerAccents(tank, turretGroup) {
+  const mat = getAccentMaterial();
+
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.09, 0.14), mat);
+  bar.position.set(0, 0.52, 1.5);
+  tank.add(bar);
+
+  for (const sx of [-1, 1]) {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 1.7), mat);
+    strip.position.set(sx * 0.74, 0.42, 0.1);
+    tank.add(strip);
+  }
+
+  if (turretGroup) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.035, 8, 18), mat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(0, 0.42, 0);
+    turretGroup.add(ring);
+  }
+
+  // The hero light is the only warm pool in the world and it travels with the
+  // player, so the focal object is the thing lighting its own surroundings.
+  const hero = new THREE.PointLight(ACCENT_HEX, 2.8, 13, 2);
+  hero.position.set(0, 2.2, 0);
+  tank.add(hero);
+  playerHeroLight = hero;
+}
+
+/**
+ * Recede the backdrop. Every environment asset is pulled to a muted, shadowed
+ * brown (darker and less saturated than the player's accent) and stripped of
+ * any emissive, so the tank is the only saturated, glowing thing in frame.
+ */
+function tintEnvironment() {
+  const recolor = (asset, hex, roughness) => asset?.traverse((n) => {
+    if (!n.isMesh || !n.material || Array.isArray(n.material)) return;
+    n.material = n.material.clone();
+    if (n.material.color) n.material.color.setHex(hex);
+    if (n.material.emissive) n.material.emissiveIntensity = 0;
+    if (roughness !== undefined) n.material.roughness = roughness;
+  });
+  recolor(worldAssets.ground_slab, 0x463928, 0.98);
+  recolor(worldAssets.wall_block, 0x342b20, 0.95);
+  recolor(worldAssets.wall_block_cracked, 0x342b20, 0.95);
+  recolor(worldAssets.wall_block_rubble, 0x30281e, 0.95);
+  recolor(worldAssets.barrier_low, 0x342b20, 0.95);
+  recolor(worldAssets.barrier_corner, 0x342b20, 0.95);
+  recolor(worldAssets.crate_supply, 0x6b5940, 0.92);
+  recolor(worldAssets.fuel_drum, 0x554632, 0.9);
+  // Spawn markers keep their shape and warm colour but lose the glow.
+  worldAssets.spawn_marker?.traverse((n) => {
+    if (n.isMesh && n.material && !Array.isArray(n.material) && n.material.emissive) {
+      n.material = n.material.clone();
+      n.material.emissiveIntensity = 0;
+    }
+  });
+}
+
 // Module assembly state
 let currentModules = {
   hull: 'hull_light',
@@ -164,7 +239,11 @@ async function init() {
   
   // Create scene
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0b0c);
+  scene.background = new THREE.Color(0xe8d6b0);
+  // Bright dusty haze. It lifts the far arena (the top of frame) without
+  // touching the near ground, so the frame gets a real value range instead of
+  // one flat tone.
+  scene.fog = new THREE.Fog(0xe8d6b0, 30, 52);
   
   // Camera for isometric view
   const aspect = window.innerWidth / window.innerHeight;
@@ -188,13 +267,16 @@ async function init() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.35;
+  renderer.toneMappingExposure = 1.6;
 
   // Lighting
-  const ambient = new THREE.AmbientLight(0xffffff, 0.75);
+  // The whole frame is warm. A dim warm fill and a warm key light the tired,
+  // dusty environment; the only saturated, glowing thing is the player's
+  // 0xffb45a trim, so the tank is unmistakeably the point of focus.
+  const ambient = new THREE.AmbientLight(0xcabfae, 1.0);
   scene.add(ambient);
   
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  const dirLight = new THREE.DirectionalLight(0xfff2e0, 3.0);
   dirLight.position.set(-15, 28, 18);
   dirLight.castShadow = true;
   dirLight.shadow.mapSize.width = 2048;
@@ -212,12 +294,16 @@ async function init() {
   // Extended base ground plane to prevent void clipping beyond the arena slab boundary
   const groundFloor = new THREE.Mesh(
     new THREE.PlaneGeometry(200, 200),
-    new THREE.MeshStandardMaterial({ color: 0x3a3e42, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0x2e251a, roughness: 0.98 })
   );
   groundFloor.rotation.x = -Math.PI / 2;
   groundFloor.position.y = -0.15;
   groundFloor.receiveShadow = true;
   scene.add(groundFloor);
+
+  // Runtime introspection so a capture can read the values actually in effect
+  // rather than the ones a document claims.
+  window.__DEBUG__ = { renderer, scene, camera, ambient, dirLight, groundFloor, THREE };
   
   // Shell pool (instanced)
   const shellGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.6, 8);
@@ -233,7 +319,8 @@ async function init() {
       active: false,
       position: new THREE.Vector3(),
       velocity: new THREE.Vector3(),
-      lifetime: 0
+      lifetime: 0,
+      owner: null
     });
     const dummy = new THREE.Object3D();
     dummy.position.set(0, -100, 0); // Hide inactive shells
@@ -241,8 +328,9 @@ async function init() {
     shellMesh.setMatrixAt(i, dummy.matrix);
   }
   shellMesh.instanceMatrix.needsUpdate = true;
-
-  // Load enemy assets
+  window.__DEBUG__.shells = shells;
+  window.__DEBUG__.shellMesh = shellMesh;
+  window.__DEBUG__.enemies = enemies;
   loadmsg.textContent = 'loading enemies...';
 
   try {
@@ -307,6 +395,9 @@ async function init() {
     };
 
     console.log('[BOLTWORKS] World assets loaded');
+
+    // Recede the backdrop: muted brown environment, no emissive anywhere.
+    tintEnvironment();
   } catch (e) {
     console.error('[BOLTWORKS] Failed to load world assets:', e);
     // Continue without world assets - game will use flat ground
@@ -349,6 +440,8 @@ async function init() {
     // Add barrel
     barrel.position.set(0, 0.5, 1.2);
     turretGroup.add(barrel);
+
+    addPlayerAccents(playerTank, turretGroup);
 
     playerTank.position.y = 0.2;
     playerTank.castShadow = true;
@@ -510,6 +603,7 @@ function fireShell() {
   const speed = 30; // m/s
 
   shell.active = true;
+  shell.owner = 'player';
   shell.position.copy(playerTank.position);
   shell.position.y += 1.5;
   shell.velocity.set(
@@ -541,11 +635,26 @@ function updateShells(dt) {
       Math.abs(shell.position.x) > 30 ||
       Math.abs(shell.position.z) > 30) {
       shell.active = false;
+      shell.owner = null;
       dummy.position.set(0, -100, 0);
       dummy.updateMatrix();
       scene.children.find(c => c.isInstancedMesh)?.setMatrixAt(i, dummy.matrix);
       needsUpdate = true;
       return;
+    }
+
+    // Enemy shells hitting player (visible projectile fairness)
+    if (shell.owner === 'enemy' && playerTank) {
+      if (shell.position.distanceTo(playerTank.position) < 1.8) {
+        shell.active = false;
+        shell.owner = null;
+        damagePlayer(10);
+        dummy.position.set(0, -100, 0);
+        dummy.updateMatrix();
+        scene.children.find(c => c.isInstancedMesh)?.setMatrixAt(i, dummy.matrix);
+        needsUpdate = true;
+        return;
+      }
     }
 
     // Update visual
@@ -646,16 +755,26 @@ function updateEnemies(dt) {
       }
     }
 
-    // Collision with player (ram damage)
+    // Collision with player (ram damage + separation)
     if (dist < 2) {
       playerHP -= config.damage * dt * 0.5; // Reduced ram damage
       window.__GAME__.hp = playerHP;
+      // Simple separation: push both apart along the line between them
+      if (dist > 0.01) {
+        const overlap = (2 - dist);
+        const pushDir = toPlayer.clone().normalize();
+        playerTank.position.addScaledVector(pushDir, overlap * 0.5 + 0.015);
+        enemy.mesh.position.addScaledVector(pushDir, -overlap * 0.5);
+      } else {
+        playerTank.position.x += 0.05;
+        enemy.mesh.position.x -= 0.05;
+      }
     }
   });
 
-  // Check shell-enemy collisions
-  shells.forEach(shell => {
-    if (!shell.active) return;
+  // Check shell-enemy collisions (only player shells)
+  shells.forEach((shell, shellIdx) => {
+    if (!shell.active || shell.owner !== 'player') return;
 
     enemies.forEach((enemy, eIndex) => {
       const dist = shell.position.distanceTo(enemy.mesh.position);
@@ -664,6 +783,16 @@ function updateEnemies(dt) {
         console.log('[BOLTWORKS] Shell hit enemy! Distance:', dist);
         enemy.hp -= 20;
         shell.active = false;
+        shell.owner = null;
+        // Hide shell visual immediately
+        {
+          const dummy = new THREE.Object3D();
+          dummy.position.set(0, -100, 0);
+          dummy.updateMatrix();
+          scene.children.find(c => c.isInstancedMesh)?.setMatrixAt(shellIdx, dummy.matrix);
+          const sm = scene.children.find(c => c.isInstancedMesh);
+          if (sm) sm.instanceMatrix.needsUpdate = true;
+        }
 
         // Kill enemy
         if (enemy.hp <= 0) {
@@ -681,14 +810,22 @@ function updateEnemies(dt) {
 }
 
 function enemyFire(enemy) {
-  // Simple enemy fire - damage player if in range
-  const dist = enemy.mesh.position.distanceTo(playerTank.position);
   const config = ENEMY_TYPES[enemy.type];
-
-  if (dist <= config.range) {
-    playerHP -= config.damage * 0.05; // Very low damage per shot for balance
-    window.__GAME__.hp = playerHP;
-  }
+  const toPlayer = new THREE.Vector3().subVectors(playerTank.position, enemy.mesh.position);
+  const dist = toPlayer.length();
+  if (dist > config.range * 1.2) return; // out of range, don't waste shell
+  const shell = shells.find(s => !s.active);
+  if (!shell) return;
+  toPlayer.normalize();
+  shell.active = true;
+  shell.owner = 'enemy';
+  shell.position.copy(enemy.mesh.position);
+  shell.position.y += 1.2;
+  shell.position.addScaledVector(toPlayer, 1.6);
+  const speed = 22;
+  shell.velocity.copy(toPlayer).multiplyScalar(speed);
+  shell.lifetime = 3;
+  spawnEnemyMuzzleFlash(enemy);
 }
 
 function checkGameState() {
@@ -857,6 +994,26 @@ function spawnMuzzleFlash() {
   scene.add(flashLight);
 
   combatFx.push({ type: 'sprite', mesh: flash, light: flashLight, until: performance.now() + 85, born: performance.now(), base: 1.4 });
+}
+
+function spawnEnemyMuzzleFlash(enemy) {
+  const flash = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: getFlashTexture(),
+    color: 0x8fb4d8,
+    transparent: true,
+    opacity: .95,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  }));
+  const dir = new THREE.Vector3().subVectors(playerTank.position, enemy.mesh.position).normalize();
+  flash.position.copy(enemy.mesh.position).addScaledVector(dir, 1.2);
+  flash.position.y += 1.2;
+  flash.scale.set(1.2, 1.2, 1);
+  scene.add(flash);
+  const flashLight = new THREE.PointLight(0x8fb4d8, 2.8, 9, 2);
+  flashLight.position.copy(flash.position);
+  scene.add(flashLight);
+  combatFx.push({ type: 'sprite', mesh: flash, light: flashLight, until: performance.now() + 85, born: performance.now(), base: 1.2 });
 }
 
 function spawnTrackDust(time) {
@@ -1124,6 +1281,8 @@ function assembleTank(transform) {
     // Add barrel
     barrel.position.set(0, 0.5, 1.2);
     turretGroup.add(barrel);
+
+    addPlayerAccents(playerTank, turretGroup);
 
     // Add armour plates if equipped
     if (currentModules.armourSide) {
