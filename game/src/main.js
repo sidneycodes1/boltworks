@@ -80,6 +80,9 @@ const GRID_SIZE = 12;
 const CELL_SIZE = 4; // metres
 const WALL_HALF_EXTENT = 0.5; // wall_block is a 1m cube
 let spawnMarkers = [];
+// Camera offset for isometric view — used to derive input rotation
+const CAMERA_FOLLOW_OFFSET = 12;
+const ISO_ANGLE = Math.atan2(CAMERA_FOLLOW_OFFSET, CAMERA_FOLLOW_OFFSET);
 
 // STYLE-LOCK accent. It must live in the 3D world, not only the UI: player
 // focal details, world trims and the hero light all share this one hue so warm
@@ -519,11 +522,14 @@ function loop(time) {
     return;
   }
 
-  // Update tank position based on input
+  // Update tank position based on input — rotated into camera space
+  // ISO_ANGLE is derived from the actual camera offset (CAMERA_FOLLOW_OFFSET).
+  // We rotate by -ISO_ANGLE so that screen-up (input.y = -1) maps to world
+  // -X -Z (away from the camera / toward the top of the screen).
   const speed = 5; // m/s
   if (input.x !== 0 || input.y !== 0) {
-    const moveX = input.x * speed * dt;
-    const moveZ = input.y * speed * dt;
+    const moveX = (input.x * Math.cos(-ISO_ANGLE) - input.y * Math.sin(-ISO_ANGLE)) * speed * dt;
+    const moveZ = (input.x * Math.sin(-ISO_ANGLE) + input.y * Math.cos(-ISO_ANGLE)) * speed * dt;
 
     // Check wall collision before moving
     const newX = playerTank.position.x + moveX;
@@ -534,9 +540,9 @@ function loop(time) {
       playerTank.position.z = newZ;
     }
 
-    // Rotate tank to face movement direction
-    if (Math.abs(input.x) > 0.1 || Math.abs(input.y) > 0.1) {
-      const angle = Math.atan2(input.x, input.y);
+    // Rotate tank to face movement direction (use rotated vector)
+    if (Math.abs(moveX) > 0.01 || Math.abs(moveZ) > 0.01) {
+      const angle = Math.atan2(moveX, moveZ);
       playerTank.rotation.y = angle;
     }
   }
@@ -561,9 +567,9 @@ function loop(time) {
 
   // Update camera to follow tank
   camera.position.set(
-    playerTank.position.x + 12,
-    playerTank.position.y + 12,
-    playerTank.position.z + 12
+    playerTank.position.x + CAMERA_FOLLOW_OFFSET,
+    playerTank.position.y + CAMERA_FOLLOW_OFFSET,
+    playerTank.position.z + CAMERA_FOLLOW_OFFSET
   );
   camera.lookAt(playerTank.position);
 
