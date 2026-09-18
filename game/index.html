@@ -69,6 +69,8 @@
   #hud-enemies { right:max(56px,calc(env(safe-area-inset-right) + 40px)); text-align:right; white-space:nowrap; }
   #muteb { position:fixed; top:max(16px,env(safe-area-inset-top)); right:max(16px,env(safe-area-inset-right)); width:32px; height:32px; border:1px solid #4a5057; background:rgba(20,22,25,.86); color:#e8e4dc; font-size:14px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:25; }
   #muteb:hover { border-color:#ffb45a; }
+  .settings-group { display:flex; flex-direction:column; gap:10px; align-items:center; width:min(320px,80vw); margin:8px 0; }
+  .settings-group label { font-size:10px; letter-spacing:.14em; color:#aeb5bb; }
   .hud-label { color:#aeb5bb; font-size:9px; margin-bottom:6px; }
   .hp-track { height:9px; border:1px solid #67717a; background:rgba(9,11,12,.72); overflow:hidden; }
   #hp-fill { height:100%; width:100%; background:linear-gradient(90deg,#8b3a3a,#ffb45a); transition:width 80ms linear; }
@@ -85,7 +87,8 @@
   <div id="loadmsg">initialising</div>
 </div>
 
-<button class="pe" id="muteb" aria-label="Toggle Mute">🔊</button>
+<button class="pe" id="muteb" aria-label="Toggle Mute" style="display:none">🔊</button>
+<button class="pe" id="settingsb" aria-label="Settings" style="position:fixed;top:max(16px,env(safe-area-inset-top));right:max(16px,env(safe-area-inset-right));width:32px;height:32px;border:1px solid #4a5057;background:rgba(20,22,25,.86);color:#e8e4dc;font-size:14px;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:25">⚙</button>
 <div id="ui">
   <div id="hud" aria-live="polite">
     <div class="hud-block" id="hud-hp"><div class="hud-label" id="hp-text">HP 150 / 150</div><div class="hp-track"><div id="hp-fill"></div></div></div>
@@ -105,6 +108,30 @@
   <div class="screen" id="victory" aria-live="assertive">
     <h2>VICTORY</h2><p id="victory-stats"></p>
     <div class="button-row"><button class="btn pe" id="againb">PLAY AGAIN</button><button class="btn pe" id="victory-exit">EXIT</button></div>
+  </div>
+  <div class="screen" id="settings" aria-live="polite">
+    <h2>SETTINGS</h2>
+    <div class="settings-group">
+      <label>MASTER VOLUME <span id="vol-value">60%</span></label>
+      <input type="range" id="vol-slider" min="0" max="100" value="60" style="width:200px">
+      <label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="mute-toggle"> MUTE</label>
+    </div>
+    <div class="settings-group">
+      <label>JOYSTICK</label>
+      <div class="button-row">
+        <button class="btn" id="joy-fixed">FIXED</button>
+        <button class="btn" id="joy-floating" style="border-color:#ffb45a;color:#ffb45a">FLOATING</button>
+      </div>
+    </div>
+    <div class="settings-group">
+      <label>CAMERA DISTANCE</label>
+      <div class="button-row">
+        <button class="btn" id="cam-close">CLOSE</button>
+        <button class="btn" id="cam-default" style="border-color:#ffb45a;color:#ffb45a">DEFAULT</button>
+        <button class="btn" id="cam-far">FAR</button>
+      </div>
+    </div>
+    <button class="btn" id="settings-close">BACK</button>
   </div>
 </div>
 

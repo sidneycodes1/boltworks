@@ -82,8 +82,14 @@ const CELL_SIZE = 4; // metres
 const WALL_HALF_EXTENT = 0.5; // wall_block is a 1m cube
 let spawnMarkers = [];
 // Camera offset for isometric view — used to derive input rotation
-const CAMERA_FOLLOW_OFFSET = 12;
-const ISO_ANGLE = Math.atan2(CAMERA_FOLLOW_OFFSET, CAMERA_FOLLOW_OFFSET);
+let CAMERA_FOLLOW_OFFSET = 12;
+let ISO_ANGLE = Math.atan2(CAMERA_FOLLOW_OFFSET, CAMERA_FOLLOW_OFFSET);
+let settings = { volume: 60, joystick: 'floating', camera: 'default' };
+const CAMERA_PRESETS = {
+  close: { frustum: 14, offset: 10 },
+  default: { frustum: 18, offset: 12 },
+  far: { frustum: 22, offset: 16 }
+};
 
 // STYLE-LOCK accent. It must live in the 3D world, not only the UI: player
 // focal details, world trims and the hero light all share this one hue so warm
@@ -1690,20 +1696,30 @@ function setupInput() {
   let stickActive = false;
   let stickCenter = { x: 0, y: 0 };
   
-  // Touch controls — floating joystick: zone stays large, visuals appear at touch-down point
+  // Touch controls — supports both fixed and floating (settings.joystick)
   stick.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const touch = e.touches[0];
-    stickCenter = {
-      x: touch.clientX,
-      y: touch.clientY
-    };
-    stickBase.style.left = touch.clientX + 'px';
-    stickBase.style.top = touch.clientY + 'px';
-    stickBase.style.position = 'fixed';
-    stickNub.style.left = touch.clientX + 'px';
-    stickNub.style.top = touch.clientY + 'px';
-    stickNub.style.position = 'fixed';
+    if (settings.joystick === 'floating') {
+      stickCenter = { x: touch.clientX, y: touch.clientY };
+      stickBase.style.left = touch.clientX + 'px';
+      stickBase.style.top = touch.clientY + 'px';
+      stickBase.style.position = 'fixed';
+      stickNub.style.left = touch.clientX + 'px';
+      stickNub.style.top = touch.clientY + 'px';
+      stickNub.style.position = 'fixed';
+    } else {
+      const rect = stick.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      stickCenter = { x: cx, y: cy };
+      stickBase.style.left = cx + 'px';
+      stickBase.style.top = cy + 'px';
+      stickBase.style.position = 'fixed';
+      stickNub.style.left = cx + 'px';
+      stickNub.style.top = cy + 'px';
+      stickNub.style.position = 'fixed';
+    }
     stickActive = true;
     stick.classList.add('active');
     stickBase.style.opacity = '1';
@@ -1787,6 +1803,67 @@ function setupInput() {
   capBtn.addEventListener('touchend', () => capBtn.classList.remove('dn'), { passive: true });
   capBtn.addEventListener('touchcancel', () => capBtn.classList.remove('dn'), { passive: true });
 
+  // Settings — session only, no persistence
+  const settingsScreen = document.getElementById('settings');
+  const settingsBtn = document.getElementById('settingsb');
+  const closeSettingsBtn = document.getElementById('settings-close');
+  const volSlider = document.getElementById('vol-slider');
+  const volValue = document.getElementById('vol-value');
+  const muteToggle = document.getElementById('mute-toggle');
+  const joyFixed = document.getElementById('joy-fixed');
+  const joyFloating = document.getElementById('joy-floating');
+  const camClose = document.getElementById('cam-close');
+  const camDefault = document.getElementById('cam-default');
+  const camFar = document.getElementById('cam-far');
+  function applyCameraPreset(preset) {
+    const cfg = CAMERA_PRESETS[preset];
+    if (!cfg || !camera) return;
+    CAMERA_FOLLOW_OFFSET = cfg.offset;
+    ISO_ANGLE = Math.atan2(CAMERA_FOLLOW_OFFSET, CAMERA_FOLLOW_OFFSET);
+    const aspect = window.innerWidth / window.innerHeight;
+    camera.left = cfg.frustum * aspect / -2;
+    camera.right = cfg.frustum * aspect / 2;
+    camera.top = cfg.frustum / 2;
+    camera.bottom = cfg.frustum / -2;
+    camera.updateProjectionMatrix();
+  }
+  function updateSettingsUI() {
+    if (volValue) volValue.textContent = settings.volume + '%';
+    if (volSlider) volSlider.value = settings.volume;
+    if (muteToggle) muteToggle.checked = !!audio.muted;
+    if (joyFixed) { joyFixed.style.borderColor = settings.joystick === 'fixed' ? '#ffb45a' : '#4a5057'; joyFixed.style.color = settings.joystick === 'fixed' ? '#ffb45a' : '#e8e4dc'; }
+    if (joyFloating) { joyFloating.style.borderColor = settings.joystick === 'floating' ? '#ffb45a' : '#4a5057'; joyFloating.style.color = settings.joystick === 'floating' ? '#ffb45a' : '#e8e4dc'; }
+    if (camClose) { camClose.style.borderColor = settings.camera === 'close' ? '#ffb45a' : '#4a5057'; camClose.style.color = settings.camera === 'close' ? '#ffb45a' : '#e8e4dc'; }
+    if (camDefault) { camDefault.style.borderColor = settings.camera === 'default' ? '#ffb45a' : '#4a5057'; camDefault.style.color = settings.camera === 'default' ? '#ffb45a' : '#e8e4dc'; }
+    if (camFar) { camFar.style.borderColor = settings.camera === 'far' ? '#ffb45a' : '#4a5057'; camFar.style.color = settings.camera === 'far' ? '#ffb45a' : '#e8e4dc'; }
+  }
+  function openSettings() {
+    if (settingsScreen) settingsScreen.classList.add('on');
+  }
+  function closeSettings() {
+    if (settingsScreen) settingsScreen.classList.remove('on');
+  }
+  if (settingsBtn) settingsBtn.addEventListener('click', openSettings);
+  if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettings);
+  if (volSlider) volSlider.addEventListener('input', (e) => {
+    settings.volume = parseInt(e.target.value, 10);
+    if (volValue) volValue.textContent = settings.volume + '%';
+    audio.muted = false;
+    if (audio.masterGain) audio.masterGain.gain.setTargetAtTime(settings.volume / 100 * 0.6, audio.ctx ? audio.ctx.currentTime : 0, 0.04);
+    if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
+    updateSettingsUI();
+  });
+  if (muteToggle) muteToggle.addEventListener('change', (e) => {
+    audio.muted = e.target.checked;
+    if (audio.masterGain && audio.ctx) audio.masterGain.gain.setTargetAtTime(audio.muted ? 0 : settings.volume / 100 * 0.6, audio.ctx.currentTime, 0.04);
+  });
+  if (joyFixed) joyFixed.addEventListener('click', () => { settings.joystick = 'fixed'; updateSettingsUI(); });
+  if (joyFloating) joyFloating.addEventListener('click', () => { settings.joystick = 'floating'; updateSettingsUI(); });
+  if (camClose) camClose.addEventListener('click', () => { settings.camera = 'close'; applyCameraPreset('close'); updateSettingsUI(); });
+  if (camDefault) camDefault.addEventListener('click', () => { settings.camera = 'default'; applyCameraPreset('default'); updateSettingsUI(); });
+  if (camFar) camFar.addEventListener('click', () => { settings.camera = 'far'; applyCameraPreset('far'); updateSettingsUI(); });
+  updateSettingsUI();
+
   // Keyboard fallback for desktop
   const keys = {};
   window.addEventListener('keydown', (e) => {
@@ -1853,7 +1930,8 @@ function setupInput() {
   window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     const aspect = window.innerWidth / window.innerHeight;
-    const frustumSize = 18;
+    const preset = CAMERA_PRESETS[settings.camera] || CAMERA_PRESETS.default;
+    const frustumSize = preset.frustum;
     camera.left = frustumSize * aspect / -2;
     camera.right = frustumSize * aspect / 2;
     camera.top = frustumSize / 2;
