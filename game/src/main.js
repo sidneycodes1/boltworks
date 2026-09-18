@@ -779,11 +779,19 @@ function updateEnemies(dt) {
       if (dist > 0.01) {
         const overlap = (2 - dist);
         const pushDir = toPlayer.clone().normalize();
+        const oldPlayerPos = playerTank.position.clone();
         playerTank.position.addScaledVector(pushDir, overlap * 0.5 + 0.015);
         enemy.mesh.position.addScaledVector(pushDir, -overlap * 0.5);
+        if (checkWallCollision(playerTank.position)) {
+          playerTank.position.copy(oldPlayerPos);
+        }
       } else {
+        const oldPlayerPos = playerTank.position.clone();
         playerTank.position.x += 0.05;
         enemy.mesh.position.x -= 0.05;
+        if (checkWallCollision(playerTank.position)) {
+          playerTank.position.copy(oldPlayerPos);
+        }
       }
     }
   });
