@@ -1151,14 +1151,13 @@ function showVictory() {
   victoryScreen.classList.add('on');
 }
 
-function resetRun() {
+function _resetSharedState() {
   clearTimeout(deathTimer);
   gameOverScreen.classList.remove('on');
   victoryScreen.classList.remove('on');
   flashEl.classList.remove('on');
   clearDestructionDebris();
-  // Fully reset combat/fx/input state so retry during active combat doesn't leave stray shells or stuck FX
-  shells.forEach((s, i) => {
+  shells.forEach((s) => {
     s.active = false;
     s.owner = null;
     s.lifetime = 0;
@@ -1192,11 +1191,14 @@ function resetRun() {
   enemies = [];
   if (playerTank) scene.remove(playerTank);
   playerTank = null;
-  currentVelocity.set(0, 0);
   currentModules = { hull: 'hull_light', tracks: 'tracks_standard', turret: 'turret_round', barrel: 'barrel_short', armourSide: null, armourFront: null };
   playerHP = MAX_HP;
   wave = 1; waveKills = 0; waveTotal = 0; totalKills = 0; gameOver = false; waveWin = false;
   Object.assign(window.__GAME__, { hp: MAX_HP, wave: 1, kills: 0, alive: 0, over: false, score: 0, pos: [0, 0] });
+}
+
+function resetRun() {
+  _resetSharedState();
   gameStarted = true;
   gameState = 'transitioning';
   buildWorldLayout(1);
@@ -1204,18 +1206,16 @@ function resetRun() {
 }
 
 function exitToTitle() {
-  clearTimeout(deathTimer);
-  gameOverScreen.classList.remove('on');
-  victoryScreen.classList.remove('on');
-  flashEl.classList.remove('on');
-  enemies.forEach((enemy) => scene.remove(enemy.mesh));
-  enemies = [];
-  clearDestructionDebris();
-  currentVelocity.set(0, 0);
+  _resetSharedState();
   gameStarted = false;
   gameState = 'ready';
   document.getElementById('touch').classList.remove('on');
   startScreen.classList.add('on');
+  buildWorldLayout(1);
+  assembleTank({ position: new THREE.Vector3(0, .2, 0), rotationY: 0 }).then(() => {
+    camera.position.set(CAMERA_FOLLOW_OFFSET, 0.2 + CAMERA_FOLLOW_OFFSET, CAMERA_FOLLOW_OFFSET);
+    camera.lookAt(new THREE.Vector3(0, 0.2, 0));
+  });
 }
 
 async function rebuildTank() {
