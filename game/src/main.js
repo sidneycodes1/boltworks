@@ -525,8 +525,15 @@ function loop(time) {
   // player tank exists. This is a state transition, not a null-object dodge.
   if (gameState !== 'playing') {
     if (gameState === 'destroying') updateDestructionDebris(dt);
+    const _pb = document.getElementById('pauseb');
+    if (_pb) _pb.style.display = 'none';
     renderer.render(scene, camera);
     return;
+  }
+  // Show pause button during active play
+  {
+    const _pb = document.getElementById('pauseb');
+    if (_pb) _pb.style.display = 'flex';
   }
 
   // Update tank position based on input — rotated into camera space with smoothing
@@ -1863,6 +1870,53 @@ function setupInput() {
   if (camDefault) camDefault.addEventListener('click', () => { settings.camera = 'default'; applyCameraPreset('default'); updateSettingsUI(); });
   if (camFar) camFar.addEventListener('click', () => { settings.camera = 'far'; applyCameraPreset('far'); updateSettingsUI(); });
   updateSettingsUI();
+
+  // Pause — visible only during active gameplay, freezes via gameState gating
+  const pauseBtn = document.getElementById('pauseb');
+  const pauseScreen = document.getElementById('pause');
+  const resumeBtn = document.getElementById('resume');
+  const pauseSettingsBtn = document.getElementById('pause-settings');
+  const pauseExitBtn = document.getElementById('pause-exit');
+  let settingsReturnToPause = false;
+  const origOpenSettings = openSettings;
+  const origCloseSettings = closeSettings;
+  // Wrap open/close to handle pause origin
+  openSettings = function() {
+    if (pauseScreen && pauseScreen.classList.contains('on')) {
+      settingsReturnToPause = true;
+      pauseScreen.classList.remove('on');
+    }
+    settingsScreen.classList.add('on');
+  };
+  closeSettings = function() {
+    settingsScreen.classList.remove('on');
+    if (settingsReturnToPause) {
+      settingsReturnToPause = false;
+      if (pauseScreen) pauseScreen.classList.add('on');
+    }
+  };
+  // Re-bind settings buttons to wrapped versions
+  if (settingsBtn) { settingsBtn.removeEventListener('click', origOpenSettings); settingsBtn.addEventListener('click', openSettings); }
+  if (closeSettingsBtn) { closeSettingsBtn.removeEventListener('click', origCloseSettings); closeSettingsBtn.addEventListener('click', closeSettings); }
+  if (pauseBtn) pauseBtn.addEventListener('click', () => {
+    if (gameState !== 'playing') return;
+    gameState = 'paused';
+    if (pauseScreen) pauseScreen.classList.add('on');
+    if (pauseBtn) pauseBtn.style.display = 'none';
+  });
+  if (resumeBtn) resumeBtn.addEventListener('click', () => {
+    if (pauseScreen) pauseScreen.classList.remove('on');
+    gameState = 'playing';
+    lastTime = performance.now();
+    if (pauseBtn) pauseBtn.style.display = gameState === 'playing' ? 'flex' : 'none';
+  });
+  if (pauseSettingsBtn) pauseSettingsBtn.addEventListener('click', () => {
+    openSettings();
+  });
+  if (pauseExitBtn) pauseExitBtn.addEventListener('click', () => {
+    if (pauseScreen) pauseScreen.classList.remove('on');
+    exitToTitle();
+  });
 
   // Keyboard fallback for desktop
   const keys = {};
