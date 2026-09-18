@@ -89,7 +89,7 @@ let accentMat = null;
 function getAccentMaterial() {
   if (!accentMat) {
     accentMat = new THREE.MeshStandardMaterial({
-      color: ACCENT_HEX, emissive: ACCENT_HEX, emissiveIntensity: 0.25,
+      color: ACCENT_HEX, emissive: ACCENT_HEX, emissiveIntensity: 0.18,
       roughness: 0.45, metalness: 0.1
     });
     accentMat.name = 'accent';
@@ -101,8 +101,8 @@ let playerHeroLight = null;
 function addPlayerAccents(tank, turretGroup) {
   const mat = getAccentMaterial();
 
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.09, 0.14), mat);
-  bar.position.set(0, 0.52, 1.5);
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.05, 0.08), mat);
+  bar.position.set(0, 0.52, 1.32);
   tank.add(bar);
 
   for (const sx of [-1, 1]) {
@@ -247,7 +247,7 @@ async function init() {
   
   // Camera for isometric view
   const aspect = window.innerWidth / window.innerHeight;
-  const frustumSize = 25;
+  const frustumSize = 18;
   camera = new THREE.OrthographicCamera(
     frustumSize * aspect / -2,
     frustumSize * aspect / 2,
@@ -256,7 +256,7 @@ async function init() {
     0.1,
     1000
   );
-  camera.position.set(20, 20, 20);
+  camera.position.set(15, 15, 15);
   camera.lookAt(0, 0, 0);
 
   // Renderer
@@ -561,9 +561,9 @@ function loop(time) {
 
   // Update camera to follow tank
   camera.position.set(
-    playerTank.position.x + 15,
-    playerTank.position.y + 15,
-    playerTank.position.z + 15
+    playerTank.position.x + 12,
+    playerTank.position.y + 12,
+    playerTank.position.z + 12
   );
   camera.lookAt(playerTank.position);
 
@@ -1705,6 +1705,10 @@ function setupInput() {
   // Capture button. A touch produces a synthetic click on many mobile browsers,
   // so explicitly suppress that click after handling the touch ourselves.
   const capBtn = document.getElementById('bcap');
+  // Hide dev-only capture button in production (gate behind ?debug like __DEBUG__)
+  if (!new URLSearchParams(window.location.search).has('debug')) {
+    capBtn.style.display = 'none';
+  }
   let lastCaptureTouch = -Infinity;
   capBtn.addEventListener('click', (e) => {
     e.preventDefault();
@@ -1783,7 +1787,7 @@ function setupInput() {
   window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     const aspect = window.innerWidth / window.innerHeight;
-    const frustumSize = 25;
+    const frustumSize = 18;
     camera.left = frustumSize * aspect / -2;
     camera.right = frustumSize * aspect / 2;
     camera.top = frustumSize / 2;
