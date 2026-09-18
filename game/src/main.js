@@ -1651,15 +1651,20 @@ function setupInput() {
   let stickActive = false;
   let stickCenter = { x: 0, y: 0 };
   
-  // Touch controls
+  // Touch controls — floating joystick: zone stays large, visuals appear at touch-down point
   stick.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const touch = e.touches[0];
-    const rect = stick.getBoundingClientRect();
     stickCenter = {
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2
+      x: touch.clientX,
+      y: touch.clientY
     };
+    stickBase.style.left = touch.clientX + 'px';
+    stickBase.style.top = touch.clientY + 'px';
+    stickBase.style.position = 'fixed';
+    stickNub.style.left = touch.clientX + 'px';
+    stickNub.style.top = touch.clientY + 'px';
+    stickNub.style.position = 'fixed';
     stickActive = true;
     stick.classList.add('active');
     stickBase.style.opacity = '1';
