@@ -965,6 +965,13 @@ function checkGameState() {
     window.__GAME__.wave = wave;
     console.log('[BOLTWORKS] Wave', wave, 'cleared');
     audio.playWaveClear();
+    // Immediate wave-clear banner for clarity
+    const banner = document.getElementById('wave-banner');
+    if (banner) {
+      banner.textContent = wave < 3 ? `WAVE ${wave + 1}` : 'VICTORY';
+      banner.style.opacity = '1';
+      setTimeout(() => { banner.style.opacity = '0'; }, 1500);
+    }
 
     // Start next wave after delay
     waveTransitionStart = performance.now();
