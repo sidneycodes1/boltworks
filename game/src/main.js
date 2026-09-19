@@ -631,7 +631,6 @@ function fireShell() {
   // Find inactive shell
   const shell = shells.find(s => !s.active);
   if (!shell) {
-    console.log('[BOLTWORKS] No inactive shells available');
     return;
   }
 
@@ -652,8 +651,6 @@ function fireShell() {
   spawnMuzzleFlash();
   triggerScreenShake(.07, 90);
   audio.playFire();
-
-  console.log('[BOLTWORKS] Shell fired from position:', shell.position);
 }
 
 function updateShells(dt) {
@@ -868,8 +865,6 @@ function updateEnemies(dt) {
     enemies.forEach((enemy, eIndex) => {
       const dist = shell.position.distanceTo(enemy.mesh.position);
       if (dist < 2.0) { // Increased hit radius
-        // Hit enemy
-        console.log('[BOLTWORKS] Shell hit enemy! Distance:', dist);
         enemy.hp -= 20;
         shell.active = false;
         shell.owner = null;
@@ -886,7 +881,6 @@ function updateEnemies(dt) {
 
         // Kill enemy
         if (enemy.hp <= 0) {
-          console.log('[BOLTWORKS] Enemy destroyed!');
           scene.remove(enemy.mesh);
           enemies.splice(eIndex, 1);
           waveKills++;
