@@ -1785,6 +1785,11 @@ function setupInput() {
     input.fire = false;
     fireBtn.classList.remove('dn');
   });
+  fireBtn.addEventListener('touchcancel', (e) => {
+    e.preventDefault();
+    input.fire = false;
+    fireBtn.classList.remove('dn');
+  });
 
   const captureFrame = (source) => {
     renderer.render(scene, camera);
