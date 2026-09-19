@@ -866,64 +866,67 @@ function updateEnemies(dt) {
       }
     }
 
-    // Collision with player (ram damage + separation)
+    // Collision with player (ram damage + separation) — player is immovable, only enemy is pushed
     if (dist < 2) {
-      playerHP -= config.damage * DIFFICULTY[settings.difficulty].damage * dt * 0.5; // Reduced ram damage
+      playerHP -= config.damage * DIFFICULTY[settings.difficulty].damage * dt * 0.5;
       window.__GAME__.hp = playerHP;
-      // Simple separation: push both apart along the line between them
       if (dist > 0.01) {
         const overlap = (2 - dist);
-        const pushDir = toPlayer.clone().normalize();
-        const oldPlayerPos = playerTank.position.clone();
-        playerTank.position.addScaledVector(pushDir, overlap * 0.5 + 0.015);
-        enemy.mesh.position.addScaledVector(pushDir, -overlap * 0.5);
-        if (checkWallCollision(playerTank.position)) {
-          playerTank.position.copy(oldPlayerPos);
+        const pushDir = toPlayer.clone();
+        pushDir.y = 0;
+        pushDir.normalize();
+        const oldEnemyPos = enemy.mesh.position.clone();
+        // Full separation on enemy only, capped per frame
+        const pushDist = Math.min(overlap + 0.03, 0.5);
+        enemy.mesh.position.addScaledVector(pushDir, -pushDist);
+        if (checkWallCollision(enemy.mesh.position, enemy.collisionRadius)) {
+          enemy.mesh.position.copy(oldEnemyPos);
         }
+        enemy.mesh.position.y = 0;
       } else {
-        const oldPlayerPos = playerTank.position.clone();
-        playerTank.position.x += 0.05;
-        enemy.mesh.position.x -= 0.05;
-        if (checkWallCollision(playerTank.position)) {
-          playerTank.position.copy(oldPlayerPos);
+        const oldEnemyPos = enemy.mesh.position.clone();
+        enemy.mesh.position.x -= 0.1;
+        if (checkWallCollision(enemy.mesh.position, enemy.collisionRadius)) {
+          enemy.mesh.position.copy(oldEnemyPos);
         }
+        enemy.mesh.position.y = 0;
       }
     }
   });
 
-  // Check shell-enemy collisions (only player shells)
-  shells.forEach((shell, shellIdx) => {
-    if (!shell.active || shell.owner !== 'player') return;
-
-    enemies.forEach((enemy, eIndex) => {
+  // Check shell-enemy collisions (only player shells) — reverse loops for safe splice, atomic cleanup
+  for (let s = shells.length - 1; s >= 0; s--) {
+    const shell = shells[s];
+    if (!shell.active || shell.owner !== 'player') continue;
+    for (let e = enemies.length - 1; e >= 0; e--) {
+      const enemy = enemies[e];
       const dist = shell.position.distanceTo(enemy.mesh.position);
-      if (dist < 2.0) { // Increased hit radius
+      if (dist < 2.0) {
         enemy.hp -= 20;
         shell.active = false;
         shell.owner = null;
         shell.damage = 0;
-        // Hide shell visual immediately
         {
           const dummy = new THREE.Object3D();
           dummy.position.set(0, -100, 0);
           dummy.updateMatrix();
-          scene.children.find(c => c.isInstancedMesh)?.setMatrixAt(shellIdx, dummy.matrix);
           const sm = scene.children.find(c => c.isInstancedMesh);
+          if (sm) sm.setMatrixAt(s, dummy.matrix);
           if (sm) sm.instanceMatrix.needsUpdate = true;
         }
-
-        // Kill enemy
         if (enemy.hp <= 0) {
           scene.remove(enemy.mesh);
-          enemies.splice(eIndex, 1);
+          enemies.splice(e, 1);
           waveKills++;
           totalKills++;
           window.__GAME__.kills = waveKills;
           window.__GAME__.alive = enemies.length;
+          spawnEnemyDestruction(enemy);
         }
+        break;
       }
-    });
-  });
+    }
+  }
 }
 
 function enemyFire(enemy) {
