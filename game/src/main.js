@@ -486,7 +486,7 @@ async function init() {
 
     addPlayerAccents(playerTank, turretGroup);
 
-    playerTank.position.y = 0.2;
+    playerTank.position.y = 0;
     playerTank.castShadow = true;
     scene.add(playerTank);
     playerTank.userData.collisionRadius = measureTankCollisionRadius(playerTank);
@@ -1313,7 +1313,7 @@ function resetRun() {
   gameStarted = true;
   gameState = 'transitioning';
   buildWorldLayout(1);
-  assembleTank({ position: new THREE.Vector3(0, .2, 0), rotationY: 0 }).then(() => startWave(1));
+  assembleTank({ position: new THREE.Vector3(0, 0, 0), rotationY: 0 }).then(() => startWave(1));
 }
 
 function exitToTitle() {
@@ -1323,9 +1323,9 @@ function exitToTitle() {
   document.getElementById('touch').classList.remove('on');
   startScreen.classList.add('on');
   buildWorldLayout(1);
-  assembleTank({ position: new THREE.Vector3(0, .2, 0), rotationY: 0 }).then(() => {
-    camera.position.set(CAMERA_FOLLOW_OFFSET, 0.2 + CAMERA_FOLLOW_OFFSET, CAMERA_FOLLOW_OFFSET);
-    camera.lookAt(new THREE.Vector3(0, 0.2, 0));
+  assembleTank({ position: new THREE.Vector3(0, 0, 0), rotationY: 0 }).then(() => {
+    camera.position.set(CAMERA_FOLLOW_OFFSET, CAMERA_FOLLOW_OFFSET, CAMERA_FOLLOW_OFFSET);
+    camera.lookAt(new THREE.Vector3(0, 0, 0));
   });
 }
 
@@ -1464,7 +1464,7 @@ function assembleTank(transform) {
 
     // Restore the exact gameplay transform captured before disassembly. This
     // prevents a wave clear from teleporting the player back to arena origin.
-    playerTank.position.copy(transform?.position || new THREE.Vector3(0, 0.2, 0));
+    playerTank.position.copy(transform?.position || new THREE.Vector3(0, 0, 0));
     playerTank.rotation.y = transform?.rotationY || 0;
     playerTank.castShadow = true;
 
