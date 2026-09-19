@@ -868,7 +868,7 @@ function updateEnemies(dt) {
 
     // Collision with player (ram damage + separation) — player is immovable, only enemy is pushed
     if (dist < 2) {
-      playerHP -= config.damage * DIFFICULTY[settings.difficulty].damage * dt * 0.5;
+      playerHP -= config.damage * DIFFICULTY[settings.difficulty].damage * dt * 0.25;
       window.__GAME__.hp = playerHP;
       if (dist > 0.01) {
         const overlap = (2 - dist);
@@ -939,7 +939,7 @@ function enemyFire(enemy) {
   toPlayer.normalize();
   shell.active = true;
   shell.owner = 'enemy';
-  shell.damage = Math.round(config.damage * DIFFICULTY[settings.difficulty].damage * 3);
+  shell.damage = Math.round(config.damage * DIFFICULTY[settings.difficulty].damage * 2);
   shell.position.copy(enemy.mesh.position);
   shell.position.y += 1.2;
   shell.position.addScaledVector(toPlayer, 1.6);
