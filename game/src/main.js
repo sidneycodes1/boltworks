@@ -1992,6 +1992,8 @@ function setupInput() {
   }
   if (settingsBtn) settingsBtn.addEventListener('click', openSettings);
   if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettings);
+  const settingsXBtn = document.getElementById('settings-x');
+  if (settingsXBtn) settingsXBtn.addEventListener('click', closeSettings);
   if (volSlider) volSlider.addEventListener('input', (e) => {
     settings.volume = parseInt(e.target.value, 10);
     if (volValue) volValue.textContent = settings.volume + '%';
