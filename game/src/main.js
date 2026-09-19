@@ -261,11 +261,15 @@ async function init() {
   scene.fog = new THREE.Fog(0xe8d6b0, 30, 52);
   
   // Camera for isometric view
-  const aspect = window.innerWidth / window.innerHeight;
-  const frustumSize = 18;
+  let frustumSize = CAMERA_PRESETS[settings.camera].frustum;
+  const getViewportSize = () => ({
+    w: window.visualViewport?.width ?? window.innerWidth,
+    h: window.visualViewport?.height ?? window.innerHeight
+  });
+  let vp = getViewportSize();
   camera = new THREE.OrthographicCamera(
-    frustumSize * aspect / -2,
-    frustumSize * aspect / 2,
+    frustumSize * vp.w / vp.h / -2,
+    frustumSize * vp.w / vp.h / 2,
     frustumSize / 2,
     frustumSize / -2,
     0.1,
@@ -276,7 +280,24 @@ async function init() {
 
   // Renderer
   renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  function setRendererSize() {
+    const { w, h } = getViewportSize();
+    renderer.setSize(w, h);
+    const aspect = w / h;
+    const preset = CAMERA_PRESETS[settings.camera] || CAMERA_PRESETS.default;
+    frustumSize = preset.frustum;
+    camera.left = frustumSize * aspect / -2;
+    camera.right = frustumSize * aspect / 2;
+    camera.top = frustumSize / 2;
+    camera.bottom = frustumSize / -2;
+    camera.updateProjectionMatrix();
+  }
+  setRendererSize();
+  window.visualViewport?.addEventListener('resize', setRendererSize);
+  window.addEventListener('resize', setRendererSize);
+  // Belt-and-suspenders re-check after mobile chrome settles
+  requestAnimationFrame(() => setRendererSize());
+  setTimeout(setRendererSize, 400);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -2048,10 +2069,25 @@ function setupInput() {
     });
   }
   
-  // Resize handler
+  // Resize handler — also uses visualViewport for mobile correctness
   window.addEventListener('resize', () => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    const aspect = window.innerWidth / window.innerHeight;
+    const w = window.visualViewport?.width ?? window.innerWidth;
+    const h = window.visualViewport?.height ?? window.innerHeight;
+    renderer.setSize(w, h);
+    const aspect = w / h;
+    const preset = CAMERA_PRESETS[settings.camera] || CAMERA_PRESETS.default;
+    const frustumSize = preset.frustum;
+    camera.left = frustumSize * aspect / -2;
+    camera.right = frustumSize * aspect / 2;
+    camera.top = frustumSize / 2;
+    camera.bottom = frustumSize / -2;
+    camera.updateProjectionMatrix();
+  });
+  window.visualViewport?.addEventListener('resize', () => {
+    const w = window.visualViewport.width;
+    const h = window.visualViewport.height;
+    renderer.setSize(w, h);
+    const aspect = w / h;
     const preset = CAMERA_PRESETS[settings.camera] || CAMERA_PRESETS.default;
     const frustumSize = preset.frustum;
     camera.left = frustumSize * aspect / -2;
