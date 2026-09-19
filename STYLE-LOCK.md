@@ -10,9 +10,9 @@
 | armour | `0x5c6874` | bolt-on armour plates, reinforcing |
 | accent | `0xffb45a` | warning markings, control highlights |
 | damage | `0x8b3a3a` | battle damage, scorched areas |
-| ground | `0x3a3e42` | arena floor slabs, terrain |
-| wall | `0x2d3136` | barrier blocks, arena walls |
-| supply | `0x6b7a8a` | crates, fuel drums, supply objects |
+| ground | `0x463928` | arena floor slabs, terrain — muted brown via tintEnvironment() (was 0x3a3e42) |
+| wall | `0x342b20` | barrier blocks, arena walls — muted brown (was 0x2d3136) |
+| supply | `0x6b5940` | crates — muted brown (was 0x6b7a8a) |
 | highlight | `0x8fb4d8` | muzzle flashes, energy effects |
 
 ## Fixed decisions

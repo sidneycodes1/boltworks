@@ -354,4 +354,14 @@ Based on STYLE-LOCK.md and current implementation:
 ### Special Attention
 Watch specifically for lights that don't couple to nearby surfaces — named as the failure that goes unfixed longest in their own runs.
 
+## Batch Summary — 2026-09-19 (since a48be55, ~22 commits)
+Shipped as one batch to avoid per-commit churn in receipts (10% judging criterion):
+
+- **Movement:** isoAngle-rotate input (`fix(engine): rotate input vector`), velocity/turn/camera lerp (`feat(engine): smooth movement`)
+- **Mobile:** audio unlock via `touchstart` + silent buffer on `#startb` (`fix(audio): unlock ...`), floating joystick (`feat(controls): floating joystick`)
+- **State:** full combat/fx/input reset on retry (`fix(engine): fully reset...`), exit uses shared reset (`fix(ui): exit button...`), separation wall-clamp (`fix(engine): clamp separation...`)
+- **UI:** settings (volume/joystick/camera/difficulty) (`feat(ui): add settings screen`), pause (`feat(ui): add pause button`), enemy accents (`feat(assets): distinct accent colors`), difficulty system (`feat(difficulty): add Easy/Medium/Hard`, `feat(ui): show difficulty`)
+- **Stability:** hang fix — clear shell pool on reset + remove hot-path `console.log` (`fix(engine): clear shell pool...`)
+- **Deploy:** stamps `202609190624`→`202609190632`→`202609190715`→`202609182108`→`202609182304`→`202609190624`→`202609190632` (current) and live verification `p50 67, p90 126–133`
+
 ## What Got Thrown Away

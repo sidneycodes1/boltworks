@@ -1,6 +1,8 @@
 node_modules
 _gate/
 _jam/
+work/
+_live/
 .DS_Store
 Thumbs.db
 *.log
