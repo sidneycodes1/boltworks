@@ -75,6 +75,9 @@ let totalKills = 0;
 let runStartedAt = 0;
 let destructionDebris = [];
 let deathTimer = null;
+let waveTransitionTimer = null;
+let waveTransitionStart = 0;
+let deathTransitionStart = 0;
 
 // World state
 let worldAssets = {};
@@ -961,7 +964,9 @@ function checkGameState() {
     audio.playWaveClear();
 
     // Start next wave after delay
-    setTimeout(() => {
+    waveTransitionStart = performance.now();
+    waveTransitionTimer = setTimeout(() => {
+      waveTransitionTimer = null;
       if (wave < 3) {
         startWave(wave + 1);
       } else {
@@ -1194,7 +1199,9 @@ function beginPlayerDeath() {
   void flashEl.offsetWidth;
   flashEl.classList.add('on');
   clearTimeout(deathTimer);
+  deathTransitionStart = performance.now();
   deathTimer = setTimeout(() => {
+    deathTimer = null;
     gameState = 'destroying';
     showGameOver();
   }, 150);
@@ -2011,6 +2018,9 @@ function setupInput() {
   const pauseSettingsBtn = document.getElementById('pause-settings');
   const pauseExitBtn = document.getElementById('pause-exit');
   let settingsReturnToPause = false;
+  let pausedDeathRemaining = 0;
+  let pausedWaveRemaining = 0;
+  let pausedWaveNext = 0;
   const origOpenSettings = openSettings;
   const origCloseSettings = closeSettings;
   // Wrap open/close to handle pause origin
@@ -2033,6 +2043,20 @@ function setupInput() {
   if (closeSettingsBtn) { closeSettingsBtn.removeEventListener('click', origCloseSettings); closeSettingsBtn.addEventListener('click', closeSettings); }
   if (pauseBtn) pauseBtn.addEventListener('click', () => {
     if (gameState !== 'playing') return;
+    // Suspend timers that would otherwise fire while paused
+    if (deathTimer) {
+      const elapsed = performance.now() - deathTransitionStart;
+      pausedDeathRemaining = Math.max(0, 150 - elapsed);
+      clearTimeout(deathTimer);
+      deathTimer = null;
+    }
+    if (waveTransitionTimer) {
+      const elapsed = performance.now() - waveTransitionStart;
+      pausedWaveRemaining = Math.max(0, 2000 - elapsed);
+      pausedWaveNext = wave + 1;
+      clearTimeout(waveTransitionTimer);
+      waveTransitionTimer = null;
+    }
     gameState = 'paused';
     if (pauseScreen) pauseScreen.classList.add('on');
     document.getElementById('touch').classList.remove('on');
@@ -2044,6 +2068,20 @@ function setupInput() {
     lastTime = performance.now();
     document.getElementById('touch').classList.add('on');
     if (pauseBtn) pauseBtn.style.display = 'flex';
+    if (pausedDeathRemaining > 0) {
+      deathTimer = setTimeout(() => {
+        gameState = 'destroying';
+        showGameOver();
+      }, pausedDeathRemaining);
+      pausedDeathRemaining = 0;
+    }
+    if (pausedWaveRemaining > 0) {
+      const next = pausedWaveNext;
+      waveTransitionTimer = setTimeout(() => {
+        if (next <= 3) startWave(next); else { gameOver = true; gameState = 'victory'; window.__GAME__.over = true; showVictory(); }
+      }, pausedWaveRemaining);
+      pausedWaveRemaining = 0;
+    }
   });
   if (pauseSettingsBtn) pauseSettingsBtn.addEventListener('click', () => {
     openSettings();
