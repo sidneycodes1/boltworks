@@ -116,19 +116,22 @@ export class BoltAudio {
     const ctx = this.ctx;
     const t = ctx.currentTime;
 
-    const crack = this._noiseSource(t, 0.12, 'highpass', 1200);
-    if (crack) this._env(crack, 0.7, 0.002, 0.08, t);
+    // Layer 1: sharp broadband transient — the crack (phone speakers reproduce this)
+    const crack = this._noiseSource(t, 0.04, 'highpass', 2600);
+    if (crack) this._env(crack, 0.95, 0.001, 0.018, t);
 
-    const mid = this._noiseSource(t, 0.18, 'bandpass', 450, 1.2);
-    if (mid) this._env(mid, 0.6, 0.003, 0.12, t);
+    // Layer 2: punchy low-frequency thump underneath
+    const thump = ctx.createOscillator();
+    thump.type = 'triangle';
+    thump.frequency.setValueAtTime(150, t);
+    thump.frequency.exponentialRampToValueAtTime(42, t + 0.065);
+    this._env(thump, 0.85, 0.001, 0.07, t);
+    thump.start(t);
+    thump.stop(t + 0.08);
 
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(200, t);
-    osc.frequency.exponentialRampToValueAtTime(38, t + 0.15);
-    this._env(osc, 0.8, 0.002, 0.15, t);
-    osc.start(t);
-    osc.stop(t + 0.18);
+    // Layer 3: midrange body/resonance — gives crack some boom
+    const body = this._noiseSource(t, 0.12, 'bandpass', 620, 1.0);
+    if (body) this._env(body, 0.62, 0.002, 0.09, t);
   }
 
   playHit() {
