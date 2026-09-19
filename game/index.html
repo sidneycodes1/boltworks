@@ -93,7 +93,7 @@
 <div id="ui">
   <div id="hud" aria-live="polite">
     <div class="hud-block" id="hud-hp"><div class="hud-label" id="hp-text">HP 150 / 150</div><div class="hp-track"><div id="hp-fill"></div></div></div>
-    <div class="hud-block" id="hud-wave">WAVE 1 / 3</div>
+    <div class="hud-block" id="hud-wave">WAVE 1 / 3 <span id="hud-diff" style="font-size:9px;color:#ffb45a;margin-left:6px"></span></div>
     <div class="hud-block" id="hud-enemies">ENEMIES 0</div>
   </div>
   <div class="screen" id="start">
@@ -130,6 +130,14 @@
         <button class="btn pe" id="cam-close">CLOSE</button>
         <button class="btn pe" id="cam-default" style="border-color:#ffb45a;color:#ffb45a">DEFAULT</button>
         <button class="btn pe" id="cam-far">FAR</button>
+      </div>
+    </div>
+    <div class="settings-group">
+      <label>DIFFICULTY</label>
+      <div class="button-row">
+        <button class="btn pe" id="diff-easy">EASY</button>
+        <button class="btn pe" id="diff-medium" style="border-color:#ffb45a;color:#ffb45a">MEDIUM</button>
+        <button class="btn pe" id="diff-hard">HARD</button>
       </div>
     </div>
     <button class="btn pe" id="settings-close">BACK</button>

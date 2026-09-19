@@ -84,11 +84,16 @@ let spawnMarkers = [];
 // Camera offset for isometric view — used to derive input rotation
 let CAMERA_FOLLOW_OFFSET = 12;
 let ISO_ANGLE = Math.atan2(CAMERA_FOLLOW_OFFSET, CAMERA_FOLLOW_OFFSET);
-let settings = { volume: 60, joystick: 'floating', camera: 'default' };
+let settings = { volume: 60, joystick: 'floating', camera: 'default', difficulty: 'medium' };
 const CAMERA_PRESETS = {
   close: { frustum: 14, offset: 10 },
   default: { frustum: 18, offset: 12 },
   far: { frustum: 22, offset: 16 }
+};
+const DIFFICULTY = {
+  easy: { speed: 0.8, fireInterval: 1.4, hp: 0.8, damage: 0.75, perWave: 2, windup: 150 },
+  medium: { speed: 1.0, fireInterval: 1.0, hp: 1.0, damage: 1.0, perWave: 3, windup: 0 },
+  hard: { speed: 1.25, fireInterval: 0.7, hp: 1.3, damage: 1.3, perWave: 4, windup: -150 }
 };
 
 // STYLE-LOCK accent. It must live in the 3D world, not only the UI: player
@@ -330,7 +335,8 @@ async function init() {
       position: new THREE.Vector3(),
       velocity: new THREE.Vector3(),
       lifetime: 0,
-      owner: null
+      owner: null,
+      damage: 0
     });
     const dummy = new THREE.Object3D();
     dummy.position.set(0, -100, 0); // Hide inactive shells
@@ -617,6 +623,8 @@ function updateHud() {
   hpText.textContent = `HP ${Math.ceil(hp)} / ${MAX_HP}`;
   waveHud.textContent = `WAVE ${game.wave} / 3`;
   enemiesHud.textContent = `ENEMIES ${game.alive}`;
+  const hudDiff = document.getElementById('hud-diff');
+  if (hudDiff) hudDiff.textContent = settings.difficulty.toUpperCase();
 }
 
 function fireShell() {
@@ -665,6 +673,7 @@ function updateShells(dt) {
       Math.abs(shell.position.z) > 30) {
       shell.active = false;
       shell.owner = null;
+      shell.damage = 0;
       dummy.position.set(0, -100, 0);
       dummy.updateMatrix();
       scene.children.find(c => c.isInstancedMesh)?.setMatrixAt(i, dummy.matrix);
@@ -677,7 +686,8 @@ function updateShells(dt) {
       if (shell.position.distanceTo(playerTank.position) < 1.8) {
         shell.active = false;
         shell.owner = null;
-        damagePlayer(10);
+        damagePlayer(shell.damage || 10);
+        shell.damage = 0;
         dummy.position.set(0, -100, 0);
         dummy.updateMatrix();
         scene.children.find(c => c.isInstancedMesh)?.setMatrixAt(i, dummy.matrix);
@@ -712,7 +722,7 @@ function spawnEnemy(type, position) {
   const enemy = {
     type,
     mesh: new THREE.Group(),
-    hp: ENEMY_TYPES[type].hp,
+    hp: Math.round(ENEMY_TYPES[type].hp * DIFFICULTY[settings.difficulty].hp),
     lastFire: 0,
     position: position.clone()
   };
@@ -751,7 +761,7 @@ function updateEnemies(dt) {
     if (enemy.type === 'rusher') {
       // Rush straight at player
       toPlayer.normalize();
-      const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * dt);
+      const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * DIFFICULTY[settings.difficulty].speed * dt);
       if (!checkWallCollision(newPos, enemy.collisionRadius)) {
         enemy.mesh.position.copy(newPos);
       }
@@ -760,42 +770,75 @@ function updateEnemies(dt) {
       // Maintain range, fire at player
       if (dist > config.range) {
         toPlayer.normalize();
-        const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * dt);
+        const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * DIFFICULTY[settings.difficulty].speed * dt);
         if (!checkWallCollision(newPos, enemy.collisionRadius)) {
           enemy.mesh.position.copy(newPos);
         }
       } else if (dist < config.range * 0.7) {
         toPlayer.normalize();
-        const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, -config.speed * dt);
+        const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, -config.speed * DIFFICULTY[settings.difficulty].speed * dt);
         if (!checkWallCollision(newPos, enemy.collisionRadius)) {
           enemy.mesh.position.copy(newPos);
         }
       }
       enemy.mesh.lookAt(playerTank.position);
 
-      // Fire at player
-      if (performance.now() - enemy.lastFire > config.fireRate * 1000) {
+      // Fire at player with telegraph windup
+      const diff = DIFFICULTY[settings.difficulty];
+      const fireInterval = config.fireRate * diff.fireInterval * 1000;
+      if (!enemy.windupUntil && performance.now() - enemy.lastFire > fireInterval) {
+        const baseWindup = 550;
+        const windup = baseWindup + diff.windup;
+        enemy.windupUntil = performance.now() + windup;
+        // Telegraph: windup glow so player gets warning
+        const until = enemy.windupUntil;
+        enemy.mesh.traverse((node) => {
+          if (!node.isMesh || !node.material || Array.isArray(node.material)) return;
+          const mat = node.material;
+          combatFx.push({ type: 'material', material: mat, until, emissive: mat.emissive.clone(), intensity: mat.emissiveIntensity || 1 });
+          mat.emissive.setHex(0xffcc66);
+          mat.emissiveIntensity = 1.4;
+        });
+      }
+      if (enemy.windupUntil && performance.now() >= enemy.windupUntil) {
         enemyFire(enemy);
         enemy.lastFire = performance.now();
+        enemy.windupUntil = 0;
       }
     } else if (enemy.type === 'heavy') {
       // Slow advance, heavy fire
       toPlayer.normalize();
-      const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * dt);
+      const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * DIFFICULTY[settings.difficulty].speed * dt);
       if (!checkWallCollision(newPos, enemy.collisionRadius)) {
         enemy.mesh.position.copy(newPos);
       }
       enemy.mesh.lookAt(playerTank.position);
 
-      if (performance.now() - enemy.lastFire > config.fireRate * 1000) {
+      const diffHeavy = DIFFICULTY[settings.difficulty];
+      const fireIntervalHeavy = config.fireRate * diffHeavy.fireInterval * 1000;
+      if (!enemy.windupUntil && performance.now() - enemy.lastFire > fireIntervalHeavy) {
+        const baseWindupHeavy = 650;
+        const windupHeavy = baseWindupHeavy + diffHeavy.windup;
+        enemy.windupUntil = performance.now() + windupHeavy;
+        const untilHeavy = enemy.windupUntil;
+        enemy.mesh.traverse((node) => {
+          if (!node.isMesh || !node.material || Array.isArray(node.material)) return;
+          const mat = node.material;
+          combatFx.push({ type: 'material', material: mat, until: untilHeavy, emissive: mat.emissive.clone(), intensity: mat.emissiveIntensity || 1 });
+          mat.emissive.setHex(0xffcc66);
+          mat.emissiveIntensity = 1.4;
+        });
+      }
+      if (enemy.windupUntil && performance.now() >= enemy.windupUntil) {
         enemyFire(enemy);
         enemy.lastFire = performance.now();
+        enemy.windupUntil = 0;
       }
     }
 
     // Collision with player (ram damage + separation)
     if (dist < 2) {
-      playerHP -= config.damage * dt * 0.5; // Reduced ram damage
+      playerHP -= config.damage * DIFFICULTY[settings.difficulty].damage * dt * 0.5; // Reduced ram damage
       window.__GAME__.hp = playerHP;
       // Simple separation: push both apart along the line between them
       if (dist > 0.01) {
@@ -830,6 +873,7 @@ function updateEnemies(dt) {
         enemy.hp -= 20;
         shell.active = false;
         shell.owner = null;
+        shell.damage = 0;
         // Hide shell visual immediately
         {
           const dummy = new THREE.Object3D();
@@ -865,6 +909,7 @@ function enemyFire(enemy) {
   toPlayer.normalize();
   shell.active = true;
   shell.owner = 'enemy';
+  shell.damage = Math.round(config.damage * DIFFICULTY[settings.difficulty].damage * 3);
   shell.position.copy(enemy.mesh.position);
   shell.position.y += 1.2;
   shell.position.addScaledVector(toPlayer, 1.6);
@@ -913,7 +958,7 @@ async function startWave(waveNum) {
 
   wave = waveNum;
   waveKills = 0;
-  waveTotal = waveNum * 3; // More enemies each wave
+  waveTotal = waveNum * DIFFICULTY[settings.difficulty].perWave;
   waveWin = false;
   if (wave === 1) runStartedAt = performance.now();
 
@@ -1171,13 +1216,13 @@ function clearDestructionDebris() {
 }
 
 function showGameOver() {
-  gameOverStats.textContent = `WAVES SURVIVED ${wave}  •  ENEMIES DESTROYED ${totalKills}`;
+  gameOverStats.textContent = `WAVES SURVIVED ${wave} — ${settings.difficulty.toUpperCase()} — ENEMIES DESTROYED ${totalKills}`;
   gameOverScreen.classList.add('on');
 }
 
 function showVictory() {
   const seconds = Math.max(0, Math.round((performance.now() - runStartedAt) / 1000));
-  victoryStats.textContent = `ENEMIES DESTROYED ${totalKills}  •  TIME ${seconds}s`;
+  victoryStats.textContent = `VICTORY — ${settings.difficulty.toUpperCase()} — ENEMIES DESTROYED ${totalKills} — TIME ${seconds}s`;
   victoryScreen.classList.add('on');
 }
 
@@ -1836,6 +1881,10 @@ function setupInput() {
   const camClose = document.getElementById('cam-close');
   const camDefault = document.getElementById('cam-default');
   const camFar = document.getElementById('cam-far');
+  const diffEasy = document.getElementById('diff-easy');
+  const diffMedium = document.getElementById('diff-medium');
+  const diffHard = document.getElementById('diff-hard');
+  const hudDiff = document.getElementById('hud-diff');
   function applyCameraPreset(preset) {
     const cfg = CAMERA_PRESETS[preset];
     if (!cfg || !camera) return;
@@ -1857,6 +1906,10 @@ function setupInput() {
     if (camClose) { camClose.style.borderColor = settings.camera === 'close' ? '#ffb45a' : '#4a5057'; camClose.style.color = settings.camera === 'close' ? '#ffb45a' : '#e8e4dc'; }
     if (camDefault) { camDefault.style.borderColor = settings.camera === 'default' ? '#ffb45a' : '#4a5057'; camDefault.style.color = settings.camera === 'default' ? '#ffb45a' : '#e8e4dc'; }
     if (camFar) { camFar.style.borderColor = settings.camera === 'far' ? '#ffb45a' : '#4a5057'; camFar.style.color = settings.camera === 'far' ? '#ffb45a' : '#e8e4dc'; }
+    if (diffEasy) { diffEasy.style.borderColor = settings.difficulty === 'easy' ? '#ffb45a' : '#4a5057'; diffEasy.style.color = settings.difficulty === 'easy' ? '#ffb45a' : '#e8e4dc'; }
+    if (diffMedium) { diffMedium.style.borderColor = settings.difficulty === 'medium' ? '#ffb45a' : '#4a5057'; diffMedium.style.color = settings.difficulty === 'medium' ? '#ffb45a' : '#e8e4dc'; }
+    if (diffHard) { diffHard.style.borderColor = settings.difficulty === 'hard' ? '#ffb45a' : '#4a5057'; diffHard.style.color = settings.difficulty === 'hard' ? '#ffb45a' : '#e8e4dc'; }
+    if (hudDiff) hudDiff.textContent = settings.difficulty.toUpperCase();
   }
   function openSettings() {
     if (settingsScreen) settingsScreen.classList.add('on');
@@ -1883,6 +1936,9 @@ function setupInput() {
   if (camClose) camClose.addEventListener('click', () => { settings.camera = 'close'; applyCameraPreset('close'); updateSettingsUI(); });
   if (camDefault) camDefault.addEventListener('click', () => { settings.camera = 'default'; applyCameraPreset('default'); updateSettingsUI(); });
   if (camFar) camFar.addEventListener('click', () => { settings.camera = 'far'; applyCameraPreset('far'); updateSettingsUI(); });
+  if (diffEasy) diffEasy.addEventListener('click', () => { settings.difficulty = 'easy'; updateSettingsUI(); });
+  if (diffMedium) diffMedium.addEventListener('click', () => { settings.difficulty = 'medium'; updateSettingsUI(); });
+  if (diffHard) diffHard.addEventListener('click', () => { settings.difficulty = 'hard'; updateSettingsUI(); });
   updateSettingsUI();
 
   // Pause — visible only during active gameplay, freezes via gameState gating
