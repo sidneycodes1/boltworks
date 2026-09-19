@@ -45,6 +45,9 @@ let scene = null;
 let lastTime = 0;
 let input = { x: 0, y: 0, fire: false };
 let currentVelocity = new THREE.Vector2(0, 0);
+let aimOverride = false;
+let aimAngle = 0;
+let fireTouchAnchor = null;
 
 // Combat state
 let shells = [];
@@ -585,8 +588,14 @@ function loop(time) {
       currentVelocity.x *= 0.5;
       currentVelocity.y *= 0.5;
     }
-    // Smooth turn toward movement direction (shortest angle, capped rate)
-    if (currentVelocity.length() > 0.1) {
+    // Smooth turn toward aim direction when firing, else movement direction
+    if (aimOverride && input.fire) {
+      let delta = aimAngle - playerTank.rotation.y;
+      delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+      const maxTurn = 7 * dt;
+      delta = Math.max(-maxTurn, Math.min(maxTurn, delta));
+      playerTank.rotation.y += delta;
+    } else if (currentVelocity.length() > 0.1) {
       const targetAngle = Math.atan2(currentVelocity.x, currentVelocity.y);
       let delta = targetAngle - playerTank.rotation.y;
       delta = Math.atan2(Math.sin(delta), Math.cos(delta));
@@ -1835,22 +1844,59 @@ function setupInput() {
     stickNub.style.transform = 'translate(0, 0)';
   });
   
-  // Fire button
+  // Fire button — hold to fire, drag to aim (twin-stick)
   fireBtn.addEventListener('touchstart', (e) => {
     e.preventDefault();
+    const t = e.touches[0];
+    fireTouchAnchor = { x: t.clientX, y: t.clientY };
+    aimOverride = false;
     input.fire = true;
     fireBtn.classList.add('dn');
   });
-  
+  fireBtn.addEventListener('touchmove', (e) => {
+    if (!fireTouchAnchor) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const dx = t.clientX - fireTouchAnchor.x;
+    const dy = t.clientY - fireTouchAnchor.y;
+    if (Math.hypot(dx, dy) > 12) {
+      const rawAngle = Math.atan2(dx, -dy); // screen up is -y
+      aimAngle = rawAngle - ISO_ANGLE;
+      aimOverride = true;
+    }
+  }, { passive: false });
   fireBtn.addEventListener('touchend', (e) => {
     e.preventDefault();
     input.fire = false;
     fireBtn.classList.remove('dn');
+    aimOverride = false;
+    fireTouchAnchor = null;
   });
   fireBtn.addEventListener('touchcancel', (e) => {
     e.preventDefault();
     input.fire = false;
     fireBtn.classList.remove('dn');
+    aimOverride = false;
+    fireTouchAnchor = null;
+  });
+
+  // Desktop: while Space is held, mouse position sets aim (twin-stick)
+  let mousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  window.addEventListener('mousemove', (e) => {
+    mousePos.x = e.clientX;
+    mousePos.y = e.clientY;
+    if (input.fire && !fireTouchAnchor && playerTank && camera) {
+      const wp = playerTank.position.clone().project(camera);
+      const sx = (wp.x * 0.5 + 0.5) * window.innerWidth;
+      const sy = (-wp.y * 0.5 + 0.5) * window.innerHeight;
+      const dx = mousePos.x - sx;
+      const dy = mousePos.y - sy;
+      if (Math.hypot(dx, dy) > 10) {
+        const rawAngle = Math.atan2(dx, -dy);
+        aimAngle = rawAngle - ISO_ANGLE;
+        aimOverride = true;
+      }
+    }
   });
 
   const captureFrame = (source) => {
@@ -2022,7 +2068,9 @@ function setupInput() {
   function updateKeys() {
     input.x = (keys['ArrowRight'] ? 1 : 0) - (keys['ArrowLeft'] ? 1 : 0);
     input.y = (keys['ArrowDown'] ? 1 : 0) - (keys['ArrowUp'] ? 1 : 0);
+    const wasFiring = input.fire;
     input.fire = keys['Space'] || false;
+    if (!input.fire && !fireTouchAnchor) aimOverride = false;
 
     if (input.fire) fireBtn.classList.add('dn');
     else fireBtn.classList.remove('dn');
