@@ -1211,12 +1211,14 @@ function clearDestructionDebris() {
 
 function showGameOver() {
   gameOverStats.textContent = `WAVES SURVIVED ${wave} — ${settings.difficulty.toUpperCase()} — ENEMIES DESTROYED ${totalKills}`;
+  document.getElementById('touch').classList.remove('on');
   gameOverScreen.classList.add('on');
 }
 
 function showVictory() {
   const seconds = Math.max(0, Math.round((performance.now() - runStartedAt) / 1000));
   victoryStats.textContent = `VICTORY — ${settings.difficulty.toUpperCase()} — ENEMIES DESTROYED ${totalKills} — TIME ${seconds}s`;
+  document.getElementById('touch').classList.remove('on');
   victoryScreen.classList.add('on');
 }
 
@@ -1966,13 +1968,15 @@ function setupInput() {
     if (gameState !== 'playing') return;
     gameState = 'paused';
     if (pauseScreen) pauseScreen.classList.add('on');
+    document.getElementById('touch').classList.remove('on');
     if (pauseBtn) pauseBtn.style.display = 'none';
   });
   if (resumeBtn) resumeBtn.addEventListener('click', () => {
     if (pauseScreen) pauseScreen.classList.remove('on');
     gameState = 'playing';
     lastTime = performance.now();
-    if (pauseBtn) pauseBtn.style.display = gameState === 'playing' ? 'flex' : 'none';
+    document.getElementById('touch').classList.add('on');
+    if (pauseBtn) pauseBtn.style.display = 'flex';
   });
   if (pauseSettingsBtn) pauseSettingsBtn.addEventListener('click', () => {
     openSettings();

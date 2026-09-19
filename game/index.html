@@ -46,8 +46,8 @@
   @keyframes panel-in { from { opacity:0; transform:scale(.97); } to { opacity:1; transform:scale(1); } }
   @keyframes damage-flash { 0% { opacity:0; } 15% { opacity:.6; } 100% { opacity:0; } }
 
-  #touch { position:fixed; inset:0; z-index:14; display:none; }
-  #touch.on { display:block; }
+  #touch { position:fixed; inset:0; z-index:14; display:none; pointer-events:none; }
+  #touch.on { display:block; pointer-events:none; }
   .tpad { position:absolute; }
   #stick { left:0; bottom:0; min-width:144px; min-height:144px; width:44%; height:56%; }
   #stickbase { position:absolute; width:112px; height:112px; margin:-56px 0 0 -56px; border-radius:50%;
