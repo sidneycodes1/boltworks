@@ -75,6 +75,14 @@
   .hp-track { height:9px; border:1px solid #67717a; background:rgba(9,11,12,.72); overflow:hidden; }
   #hp-fill { height:100%; width:100%; background:linear-gradient(90deg,#8b3a3a,#ffb45a); transition:width 80ms linear; }
   #bfire { right:max(18px,env(safe-area-inset-right)); bottom:26%; width:96px; height:96px; font-size:12px; }
+  @media (orientation: landscape) {
+    #hud-hp { width:min(160px,28vw); }
+    #stick { width:30%; height:70%; }
+    #bfire { right:14%; bottom:18%; width:84px; height:84px; }
+    #bcap { right:4%; bottom:4%; width:56px; height:56px; }
+    #hud-wave { top:10px; }
+    #hud-enemies { right:max(80px,calc(env(safe-area-inset-right) + 60px)); }
+  }
 </style>
 </head>
 <body>
