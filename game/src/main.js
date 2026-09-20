@@ -6,9 +6,9 @@
 console.log('[BOLTWORKS] main.js loaded');
 
 import * as THREE from 'three';
-import { ASSET } from '../assetlib.js?v=202609202023';
-import { setSurfaceDefaults } from '../surfaces.js?v=202609202023';
-import { BoltAudio } from './audio.js?v=202609202023';
+import { ASSET } from '../assetlib.js?v=202609202107';
+import { setSurfaceDefaults } from '../surfaces.js?v=202609202107';
+import { BoltAudio } from './audio.js?v=202609202107';
 
 const audio = new BoltAudio();
 
