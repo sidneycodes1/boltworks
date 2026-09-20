@@ -365,3 +365,4 @@ Shipped as one batch to avoid per-commit churn in receipts (10% judging criterio
 - **Deploy:** stamps `202609190624`→`202609190632`→`202609190715`→`202609182108`→`202609182304`→`202609190624`→`202609190632` (current) and live verification `p50 67, p90 126–133`
 
 ## What Got Thrown Away
+- **Diamond pickups (2026-09-19):** Attempted 2-per-wave max-HP pickups (`diamond_pickup.js` via 404, staggered 10-40% / 60-90% of wave). Spawn path added `+25` to `MAX_HP` on spawn instead of on collection, and with the flood of diamonds `MAX_HP` inflated to 4125. Redundant with the wave-clear full heal already shipped, so removed entirely rather than debugged. Deleted `diamond_pickup.js` + `.expect.json`, removed `worldAssets.diamond_pickup` import, `spawnDiamond`/`updateDiamonds` and HP-modification code, reset `MAX_HP` to `150` baseline in `_resetSharedState`.

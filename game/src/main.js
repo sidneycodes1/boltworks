@@ -87,9 +87,6 @@ const GRID_SIZE = 12;
 const CELL_SIZE = 4; // metres
 const WALL_HALF_EXTENT = 0.5; // wall_block is a 1m cube
 let spawnMarkers = [];
-let diamonds = [];
-let diamondSpawnThresholds = [];
-let diamondsSpawnedThisWave = 0;
 // Camera offset for isometric view — used to derive input rotation
 let CAMERA_FOLLOW_OFFSET = 12;
 let ISO_ANGLE = Math.atan2(CAMERA_FOLLOW_OFFSET, CAMERA_FOLLOW_OFFSET);
@@ -437,8 +434,7 @@ async function init() {
       ground_slab: await ASSET('./assets/ground_slab.js', { surfaces: true }),
       crate_supply: await ASSET('./assets/crate_supply.js', { surfaces: true }),
       fuel_drum: await ASSET('./assets/fuel_drum.js', { surfaces: true }),
-      spawn_marker: await ASSET('./assets/spawn_marker.js', { surfaces: true }),
-      diamond_pickup: await ASSET('./assets/diamond_pickup.js', { surfaces: true })
+      spawn_marker: await ASSET('./assets/spawn_marker.js', { surfaces: true })
     };
 
     console.log('[BOLTWORKS] World assets loaded');
@@ -624,7 +620,6 @@ function loop(time) {
   // Update enemies
   updateEnemies(dt);
   updateCombatFx(dt, time);
-  updateDiamonds(dt, time);
   if (input.x !== 0 || input.y !== 0) spawnTrackDust(time);
   audio.updateEngine(Math.min(1, Math.hypot(input.x, input.y)));
 
@@ -1320,15 +1315,12 @@ function _resetSharedState() {
   lastFireTime = 0;
   input.x = 0; input.y = 0; input.fire = false;
   currentVelocity.set(0, 0);
-  diamonds.forEach(d => scene.remove(d));
-  diamonds = [];
-  diamondSpawnThresholds = [];
-  diamondsSpawnedThisWave = 0;
   enemies.forEach((enemy) => scene.remove(enemy.mesh));
   enemies = [];
   if (playerTank) scene.remove(playerTank);
   playerTank = null;
   currentModules = { hull: 'hull_light', tracks: 'tracks_standard', turret: 'turret_round', barrel: 'barrel_short', armourSide: null, armourFront: null };
+  MAX_HP = 150;
   playerHP = MAX_HP;
   wave = 1; waveKills = 0; waveTotal = 0; totalKills = 0; gameOver = false; waveWin = false;
   Object.assign(window.__GAME__, { hp: MAX_HP, wave: 1, kills: 0, alive: 0, over: false, score: 0, pos: [0, 0] });
@@ -1557,60 +1549,6 @@ function buildWorldLayout(waveNum) {
 
   // Place world objects based on grid
   placeWorldObjects();
-
-  // Setup diamond spawn thresholds for this wave (deterministic split)
-  diamondSpawnThresholds = [];
-  diamondsSpawnedThisWave = 0;
-  if (waveTotal > 0) {
-    const t1 = 0.1 + Math.random() * 0.3; // 10-40%
-    const t2 = 0.6 + Math.random() * 0.3; // 60-90%
-    diamondSpawnThresholds = [t1, t2].sort((a,b)=>a-b);
-  }
-}
-
-function spawnDiamond() {
-  if (!worldAssets.diamond_pickup) return;
-  const diamond = worldAssets.diamond_pickup.clone();
-  const offset = (GRID_SIZE * CELL_SIZE) / 2 - CELL_SIZE / 2;
-  let x, z, attempts = 0;
-  do {
-    x = Math.floor(Math.random() * GRID_SIZE);
-    z = Math.floor(Math.random() * GRID_SIZE);
-    attempts++;
-  } while (worldGrid[x][z] !== 0 && attempts < 20);
-  const worldX = x * CELL_SIZE - offset;
-  const worldZ = z * CELL_SIZE - offset;
-  diamond.position.set(worldX, 0.5, worldZ);
-  scene.add(diamond);
-  diamonds.push(diamond);
-}
-
-function updateDiamonds(dt, time) {
-  for (let i = diamonds.length - 1; i >= 0; i--) {
-    const d = diamonds[i];
-    d.position.y = 0.5 + Math.sin(time * 0.003 + i) * 0.15;
-    d.rotation.y += dt * 1.5;
-    if (playerTank && d.position.distanceTo(playerTank.position) < 1.5) {
-      MAX_HP += 25;
-      playerHP = Math.min(playerHP + 25, MAX_HP);
-      window.__GAME__.hp = playerHP;
-      updateHud();
-      const flash = new THREE.PointLight(0xffb45a, 3, 6, 2);
-      flash.position.copy(d.position);
-      scene.add(flash);
-      combatFx.push({ type: 'sprite', mesh: flash, light: flash, until: performance.now() + 200, born: performance.now(), base: 1 });
-      audio.playWaveClear();
-      scene.remove(d);
-      diamonds.splice(i, 1);
-    }
-  }
-  const progress = waveTotal > 0 ? waveKills / waveTotal : 0;
-  if (diamondsSpawnedThisWave < 2 && diamondSpawnThresholds.length === 2) {
-    if ((diamondsSpawnedThisWave === 0 && progress >= diamondSpawnThresholds[0]) ||
-        (diamondsSpawnedThisWave === 1 && progress >= diamondSpawnThresholds[1])) {
-      spawnDiamond();
-    }
-  }
 }
 
 function clearWorld() {
@@ -1624,12 +1562,6 @@ function clearWorld() {
 
   // Clear spawn markers
   spawnMarkers = [];
-  // Clear diamonds
-  diamonds.forEach(d => scene.remove(d));
-  diamonds = [];
-  diamondSpawnThresholds = [];
-  diamondsSpawnedThisWave = 0;
-}
 
 /**
  * Instancing works on meshes, whereas generated assets arrive as Groups that
