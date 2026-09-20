@@ -48,6 +48,11 @@ let currentVelocity = new THREE.Vector2(0, 0);
 let aimOverride = false;
 let aimAngle = 0;
 let fireTouchAnchor = null;
+const _toPlayerScratch = new THREE.Vector3();
+const _newPosScratch = new THREE.Vector3();
+const _wallCheckScratch = new THREE.Vector3();
+const _targetCamPosScratch = new THREE.Vector3();
+let _shellMeshCache = null;
 function applyDeadzone(magnitude, deadzone = 0.15) {
   if (magnitude < deadzone) return 0;
   return (magnitude - deadzone) / (1 - deadzone);
@@ -386,6 +391,7 @@ async function init() {
     shellMesh.setMatrixAt(i, dummy.matrix);
   }
   shellMesh.instanceMatrix.needsUpdate = true;
+  _shellMeshCache = shellMesh;
   window.__DEBUG__.shells = shells;
   window.__DEBUG__.shellMesh = shellMesh;
   window.__DEBUG__.enemies = enemies;
@@ -623,7 +629,7 @@ function loop(time) {
   if (Math.abs(moveX) > 0.0001 || Math.abs(moveZ) > 0.0001) {
     const newX = playerTank.position.x + moveX;
     const newZ = playerTank.position.z + moveZ;
-    if (!checkWallCollision(new THREE.Vector3(newX, 0, newZ))) {
+    if (!checkWallCollision(_wallCheckScratch.set(newX, 0, newZ))) {
       playerTank.position.x = newX;
       playerTank.position.z = newZ;
     } else {
@@ -668,12 +674,12 @@ function loop(time) {
   checkGameState();
 
   // Update camera to follow tank — smoothed
-  const targetCamPos = new THREE.Vector3(
+  _targetCamPosScratch.set(
     playerTank.position.x + CAMERA_FOLLOW_OFFSET,
     playerTank.position.y + CAMERA_FOLLOW_OFFSET,
     playerTank.position.z + CAMERA_FOLLOW_OFFSET
   );
-  camera.position.lerp(targetCamPos, 1 - Math.exp(-dt * 5));
+  camera.position.lerp(_targetCamPosScratch, 1 - Math.exp(-dt * 5));
   camera.lookAt(playerTank.position);
 
   // Update telemetry
@@ -731,6 +737,7 @@ function updateShells(dt) {
   const dummy = new THREE.Object3D();
   let needsUpdate = false;
 
+  const cachedShellMesh = _shellMeshCache || scene.children.find(c => c.isInstancedMesh);
   shells.forEach((shell, i) => {
     if (!shell.active) return;
 
@@ -747,7 +754,7 @@ function updateShells(dt) {
       shell.damage = 0;
       dummy.position.set(0, -100, 0);
       dummy.updateMatrix();
-      scene.children.find(c => c.isInstancedMesh)?.setMatrixAt(i, dummy.matrix);
+      (cachedShellMesh || scene.children.find(c => c.isInstancedMesh))?.setMatrixAt(i, dummy.matrix);
       needsUpdate = true;
       return;
     }
@@ -761,7 +768,7 @@ function updateShells(dt) {
         shell.damage = 0;
         dummy.position.set(0, -100, 0);
         dummy.updateMatrix();
-        scene.children.find(c => c.isInstancedMesh)?.setMatrixAt(i, dummy.matrix);
+        (cachedShellMesh || scene.children.find(c => c.isInstancedMesh))?.setMatrixAt(i, dummy.matrix);
         needsUpdate = true;
         return;
       }
@@ -771,14 +778,14 @@ function updateShells(dt) {
     dummy.position.copy(shell.position);
     dummy.rotation.set(0, -Math.atan2(shell.velocity.x, shell.velocity.z), 0);
     dummy.updateMatrix();
-    scene.children.find(c => c.isInstancedMesh)?.setMatrixAt(i, dummy.matrix);
+    (cachedShellMesh || scene.children.find(c => c.isInstancedMesh))?.setMatrixAt(i, dummy.matrix);
     needsUpdate = true;
   });
 
   if (needsUpdate) {
-    const shellMesh = scene.children.find(c => c.isInstancedMesh);
-    if (shellMesh) {
-      shellMesh.instanceMatrix.needsUpdate = true;
+    const shellMesh2 = _shellMeshCache || scene.children.find(c => c.isInstancedMesh);
+    if (shellMesh2) {
+      shellMesh2.instanceMatrix.needsUpdate = true;
     }
   }
 }
@@ -824,32 +831,32 @@ function spawnEnemy(type, position) {
 function updateEnemies(dt) {
   enemies.forEach((enemy, index) => {
     const config = ENEMY_TYPES[enemy.type];
-    const toPlayer = new THREE.Vector3()
-      .subVectors(playerTank.position, enemy.mesh.position);
+    _toPlayerScratch.subVectors(playerTank.position, enemy.mesh.position);
+    const toPlayer = _toPlayerScratch;
     const dist = toPlayer.length();
 
     // AI behavior based on type
     if (enemy.type === 'rusher') {
       // Rush straight at player
       toPlayer.normalize();
-      const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * DIFFICULTY[settings.difficulty].speed * dt);
-      if (!checkWallCollision(newPos, enemy.collisionRadius)) {
-        enemy.mesh.position.copy(newPos);
+      _newPosScratch.copy(enemy.mesh.position).addScaledVector(toPlayer, config.speed * DIFFICULTY[settings.difficulty].speed * dt);
+      if (!checkWallCollision(_newPosScratch, enemy.collisionRadius)) {
+        enemy.mesh.position.copy(_newPosScratch);
       }
       enemy.mesh.lookAt(playerTank.position);
     } else if (enemy.type === 'shooter') {
       // Maintain range, fire at player
       if (dist > config.range) {
         toPlayer.normalize();
-        const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * DIFFICULTY[settings.difficulty].speed * dt);
-        if (!checkWallCollision(newPos, enemy.collisionRadius)) {
-          enemy.mesh.position.copy(newPos);
+        _newPosScratch.copy(enemy.mesh.position).addScaledVector(toPlayer, config.speed * DIFFICULTY[settings.difficulty].speed * dt);
+        if (!checkWallCollision(_newPosScratch, enemy.collisionRadius)) {
+          enemy.mesh.position.copy(_newPosScratch);
         }
       } else if (dist < config.range * 0.7) {
         toPlayer.normalize();
-        const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, -config.speed * DIFFICULTY[settings.difficulty].speed * dt);
-        if (!checkWallCollision(newPos, enemy.collisionRadius)) {
-          enemy.mesh.position.copy(newPos);
+        _newPosScratch.copy(enemy.mesh.position).addScaledVector(toPlayer, -config.speed * DIFFICULTY[settings.difficulty].speed * dt);
+        if (!checkWallCollision(_newPosScratch, enemy.collisionRadius)) {
+          enemy.mesh.position.copy(_newPosScratch);
         }
       }
       enemy.mesh.lookAt(playerTank.position);
@@ -879,9 +886,9 @@ function updateEnemies(dt) {
     } else if (enemy.type === 'heavy') {
       // Slow advance, heavy fire
       toPlayer.normalize();
-      const newPos = enemy.mesh.position.clone().addScaledVector(toPlayer, config.speed * DIFFICULTY[settings.difficulty].speed * dt);
-      if (!checkWallCollision(newPos, enemy.collisionRadius)) {
-        enemy.mesh.position.copy(newPos);
+      _newPosScratch.copy(enemy.mesh.position).addScaledVector(toPlayer, config.speed * DIFFICULTY[settings.difficulty].speed * dt);
+      if (!checkWallCollision(_newPosScratch, enemy.collisionRadius)) {
+        enemy.mesh.position.copy(_newPosScratch);
       }
       enemy.mesh.lookAt(playerTank.position);
 
@@ -972,7 +979,8 @@ function updateEnemies(dt) {
 
 function enemyFire(enemy) {
   const config = ENEMY_TYPES[enemy.type];
-  const toPlayer = new THREE.Vector3().subVectors(playerTank.position, enemy.mesh.position);
+  _toPlayerScratch.subVectors(playerTank.position, enemy.mesh.position);
+  const toPlayer = _toPlayerScratch;
   const dist = toPlayer.length();
   if (dist > config.range * 1.2) return; // out of range, don't waste shell
   const shell = shells.find(s => !s.active);
