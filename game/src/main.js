@@ -1562,6 +1562,7 @@ function clearWorld() {
 
   // Clear spawn markers
   spawnMarkers = [];
+}
 
 /**
  * Instancing works on meshes, whereas generated assets arrive as Groups that
