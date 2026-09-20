@@ -407,56 +407,68 @@ async function init() {
     console.error('[BOLTWORKS] Failed to load enemy assets:', e);
   }
 
-  // Load module assets for assembly
+  // Load module assets for assembly — only wave-1 essentials before __READY__
   loadmsg.textContent = 'loading modules...';
 
+  let moduleAssets = {};
   try {
-    const moduleAssets = {
+    const essentialModules = {
       hull_light: await ASSET('./assets/hull_light.js', { height: 1.2, surfaces: true }),
-      hull_heavy: await ASSET('./assets/hull_heavy.js', { height: 1.2, surfaces: true }),
       tracks_standard: await ASSET('./assets/tracks_standard.js', { surfaces: true }),
-      tracks_wide: await ASSET('./assets/tracks_wide.js', { surfaces: true }),
       turret_round: await ASSET('./assets/turret_round.js', { height: 0.6, surfaces: true }),
-      turret_angular: await ASSET('./assets/turret_angular.js', { height: 0.6, surfaces: true }),
-      barrel_short: await ASSET('./assets/barrel_short.js', { surfaces: true }),
-      barrel_long: await ASSET('./assets/barrel_long.js', { surfaces: true }),
-      barrel_twin: await ASSET('./assets/barrel_twin.js', { surfaces: true }),
-      armour_plate_side: await ASSET('./assets/armour_plate_side.js', { surfaces: true }),
-      armour_plate_front: await ASSET('./assets/armour_plate_front.js', { surfaces: true })
+      barrel_short: await ASSET('./assets/barrel_short.js', { surfaces: true })
     };
-
-    console.log('[BOLTWORKS] Module assets loaded');
-
-    // Store module assets for assembly
+    moduleAssets = essentialModules;
+    console.log('[BOLTWORKS] Essential module assets loaded');
     window.__MODULE_ASSETS__ = moduleAssets;
   } catch (e) {
-    console.error('[BOLTWORKS] Failed to load module assets:', e);
+    console.error('[BOLTWORKS] Failed to load essential module assets:', e);
   }
 
-  // Load world assets
+  // Load world assets — only wave-1 essentials before __READY__
   loadmsg.textContent = 'loading world...';
 
   try {
     worldAssets = {
       wall_block: await ASSET('./assets/wall_block.js', { surfaces: true }),
-      wall_block_cracked: await ASSET('./assets/wall_block_cracked.js', { surfaces: true }),
-      wall_block_rubble: await ASSET('./assets/wall_block_rubble.js', { surfaces: true }),
-      barrier_low: await ASSET('./assets/barrier_low.js', { surfaces: true }),
-      barrier_corner: await ASSET('./assets/barrier_corner.js', { surfaces: true }),
       ground_slab: await ASSET('./assets/ground_slab.js', { surfaces: true }),
+      spawn_marker: await ASSET('./assets/spawn_marker.js', { surfaces: true }),
+      barrier_low: await ASSET('./assets/barrier_low.js', { surfaces: true }),
       crate_supply: await ASSET('./assets/crate_supply.js', { surfaces: true }),
-      fuel_drum: await ASSET('./assets/fuel_drum.js', { surfaces: true }),
-      spawn_marker: await ASSET('./assets/spawn_marker.js', { surfaces: true })
+      fuel_drum: await ASSET('./assets/fuel_drum.js', { surfaces: true })
     };
-
-    console.log('[BOLTWORKS] World assets loaded');
-
-    // Recede the backdrop: muted brown environment, no emissive anywhere.
+    console.log('[BOLTWORKS] Essential world assets loaded');
     tintEnvironment();
   } catch (e) {
     console.error('[BOLTWORKS] Failed to load world assets:', e);
-    // Continue without world assets - game will use flat ground
   }
+  // Defer non-essential assets until after __READY__ so start screen appears faster
+  (async () => {
+    try {
+      const extraModules = {
+        hull_heavy: await ASSET('./assets/hull_heavy.js', { height: 1.2, surfaces: true }),
+        tracks_wide: await ASSET('./assets/tracks_wide.js', { surfaces: true }),
+        turret_angular: await ASSET('./assets/turret_angular.js', { height: 0.6, surfaces: true }),
+        barrel_long: await ASSET('./assets/barrel_long.js', { surfaces: true }),
+        barrel_twin: await ASSET('./assets/barrel_twin.js', { surfaces: true }),
+        armour_plate_side: await ASSET('./assets/armour_plate_side.js', { surfaces: true }),
+        armour_plate_front: await ASSET('./assets/armour_plate_front.js', { surfaces: true })
+      };
+      Object.assign(moduleAssets, extraModules);
+      window.__MODULE_ASSETS__ = moduleAssets;
+      console.log('[BOLTWORKS] Deferred module assets loaded');
+    } catch (e) { console.error('[BOLTWORKS] Failed to load deferred modules:', e); }
+    try {
+      const extraWorld = {
+        wall_block_cracked: await ASSET('./assets/wall_block_cracked.js', { surfaces: true }),
+        wall_block_rubble: await ASSET('./assets/wall_block_rubble.js', { surfaces: true }),
+        barrier_corner: await ASSET('./assets/barrier_corner.js', { surfaces: true })
+      };
+      Object.assign(worldAssets, extraWorld);
+      console.log('[BOLTWORKS] Deferred world assets loaded');
+      tintEnvironment();
+    } catch (e) { console.error('[BOLTWORKS] Failed to load deferred world:', e); }
+  })();
 
   // Load and create player tank
   loadmsg.textContent = 'building tank...';
