@@ -41,6 +41,8 @@
   .btn:hover { border-color:#ffb45a; color:#ffb45a; }
   .screen.on { animation:panel-in 180ms ease-out both; }
   .button-row { display:flex; gap:12px; }
+  #pause { max-height:100vh; max-height:100dvh; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:env(safe-area-inset-bottom,20px); }
+  #pause .button-row { flex-wrap:wrap; justify-content:center; }
   #flash { position:fixed; inset:0; z-index:30; pointer-events:none; opacity:0; background:#8b3a3a; }
   #flash.on { animation:damage-flash 260ms ease-out both; }
   @keyframes panel-in { from { opacity:0; transform:scale(.97); } to { opacity:1; transform:scale(1); } }
