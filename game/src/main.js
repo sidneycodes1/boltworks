@@ -48,6 +48,13 @@ let currentVelocity = new THREE.Vector2(0, 0);
 let aimOverride = false;
 let aimAngle = 0;
 let fireTouchAnchor = null;
+function applyDeadzone(magnitude, deadzone = 0.15) {
+  if (magnitude < deadzone) return 0;
+  return (magnitude - deadzone) / (1 - deadzone);
+}
+function responseCurve(input, exponent = 1.6) {
+  return Math.sign(input) * Math.pow(Math.abs(input), exponent);
+}
 
 // Combat state
 let shells = [];
@@ -1841,10 +1848,6 @@ function setupInput() {
     stickNub.style.opacity = '1';
   });
   
-  function applyDeadzone(magnitude, deadzone = 0.15) {
-    if (magnitude < deadzone) return 0;
-    return (magnitude - deadzone) / (1 - deadzone);
-  }
   stick.addEventListener('touchmove', (e) => {
     e.preventDefault();
     if (!stickActive) return;
@@ -1853,13 +1856,14 @@ function setupInput() {
     const dx = touch.clientX - stickCenter.x;
     const dy = touch.clientY - stickCenter.y;
     
-    // Deadzone + scaled response
+    // Deadzone + response curve
     const maxDist = 40;
     const rawMag = Math.min(Math.sqrt(dx * dx + dy * dy) / maxDist, 1);
     const deadzoned = applyDeadzone(rawMag, 0.15);
+    const curved = responseCurve(deadzoned, 1.6);
     const angle = Math.atan2(dy, dx);
-    input.x = Math.cos(angle) * deadzoned;
-    input.y = Math.sin(angle) * deadzoned;
+    input.x = Math.cos(angle) * curved;
+    input.y = Math.sin(angle) * curved;
     
     // Update stick nub visual
     stickNub.style.transform = `translate(${dx}px, ${dy}px)`;
