@@ -317,8 +317,11 @@ async function init() {
   requestAnimationFrame(() => setRendererSize());
   setTimeout(setRendererSize, 400);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = false;
+  requestAnimationFrame(() => {
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  });
   
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.6;
@@ -432,18 +435,28 @@ async function init() {
     worldAssets = {
       wall_block: await ASSET('./assets/wall_block.js', { surfaces: true }),
       ground_slab: await ASSET('./assets/ground_slab.js', { surfaces: true }),
-      spawn_marker: await ASSET('./assets/spawn_marker.js', { surfaces: true }),
-      barrier_low: await ASSET('./assets/barrier_low.js', { surfaces: true }),
-      crate_supply: await ASSET('./assets/crate_supply.js', { surfaces: true }),
-      fuel_drum: await ASSET('./assets/fuel_drum.js', { surfaces: true })
+      spawn_marker: await ASSET('./assets/spawn_marker.js', { surfaces: true })
     };
     console.log('[BOLTWORKS] Essential world assets loaded');
     tintEnvironment();
+    // Defer ground_slab recolor to idle so it doesn't block __READY__
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        const g = worldAssets.ground_slab;
+        if (g) g.traverse((n) => {
+          if (!n.isMesh || !n.material || Array.isArray(n.material)) return;
+          n.material = n.material.clone();
+          n.material.color.setHex(0x463928);
+          n.material.roughness = 0.98;
+          if (n.material.emissive) n.material.emissiveIntensity = 0;
+        });
+      });
+    }
   } catch (e) {
     console.error('[BOLTWORKS] Failed to load world assets:', e);
   }
   // Defer non-essential assets until after __READY__ so start screen appears faster
-  (async () => {
+  window.__DEFERRED_ASSETS__ = (async () => {
     try {
       const extraModules = {
         hull_heavy: await ASSET('./assets/hull_heavy.js', { height: 1.2, surfaces: true }),
@@ -462,7 +475,10 @@ async function init() {
       const extraWorld = {
         wall_block_cracked: await ASSET('./assets/wall_block_cracked.js', { surfaces: true }),
         wall_block_rubble: await ASSET('./assets/wall_block_rubble.js', { surfaces: true }),
-        barrier_corner: await ASSET('./assets/barrier_corner.js', { surfaces: true })
+        barrier_corner: await ASSET('./assets/barrier_corner.js', { surfaces: true }),
+        barrier_low: await ASSET('./assets/barrier_low.js', { surfaces: true }),
+        crate_supply: await ASSET('./assets/crate_supply.js', { surfaces: true }),
+        fuel_drum: await ASSET('./assets/fuel_drum.js', { surfaces: true })
       };
       Object.assign(worldAssets, extraWorld);
       console.log('[BOLTWORKS] Deferred world assets loaded');
@@ -1373,6 +1389,15 @@ function exitToTitle() {
 }
 
 async function rebuildTank() {
+  // If deferred assets are still in flight (slow connection), wait for them gracefully
+  if (window.__DEFERRED_ASSETS__ && typeof window.__DEFERRED_ASSETS__.then === 'function') {
+    try {
+      await Promise.race([
+        window.__DEFERRED_ASSETS__,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('deferred timeout')), 4000))
+      ]);
+    } catch (e) { console.warn('[BOLTWORKS] Deferred assets still pending at rebuild, continuing with fallback'); }
+  }
   inAssembly = true;
   console.log('[BOLTWORKS] Rebuilding tank for wave', wave);
 
