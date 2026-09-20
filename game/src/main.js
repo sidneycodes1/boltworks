@@ -97,11 +97,16 @@ let spawnMarkers = [];
 // Camera offset for isometric view — used to derive input rotation
 let CAMERA_FOLLOW_OFFSET = 12;
 let ISO_ANGLE = Math.atan2(CAMERA_FOLLOW_OFFSET, CAMERA_FOLLOW_OFFSET);
-let settings = { volume: 60, joystick: 'floating', camera: 'default', difficulty: 'medium' };
+let settings = { volume: 60, joystick: 'floating', camera: 'default', difficulty: 'medium', turnSensitivity: 'medium' };
 const CAMERA_PRESETS = {
   close: { frustum: 14, offset: 10 },
   default: { frustum: 18, offset: 12 },
   far: { frustum: 22, offset: 16 }
+};
+const TURN_SENSITIVITY_PRESETS = {
+  low: { deadzone: 0.20, exponent: 2.0, maxTurn: 3 },
+  medium: { deadzone: 0.15, exponent: 1.6, maxTurn: 5 },
+  high: { deadzone: 0.08, exponent: 1.2, maxTurn: 7 }
 };
 const DIFFICULTY = {
   easy: { speed: 0.8, fireInterval: 1.4, hp: 0.8, damage: 0.75, perWave: 2, windup: 150 },
@@ -599,17 +604,18 @@ function loop(time) {
       currentVelocity.y *= 0.5;
     }
     // Smooth turn toward aim direction when firing, else movement direction
+    const turnPreset = TURN_SENSITIVITY_PRESETS[settings.turnSensitivity] || TURN_SENSITIVITY_PRESETS.medium;
     if (aimOverride && input.fire) {
       let delta = aimAngle - playerTank.rotation.y;
       delta = Math.atan2(Math.sin(delta), Math.cos(delta));
-      const maxTurn = 7 * dt;
+      const maxTurn = (turnPreset.maxTurn + 2) * dt;
       delta = Math.max(-maxTurn, Math.min(maxTurn, delta));
       playerTank.rotation.y += delta;
     } else if (currentVelocity.length() > 0.1) {
       const targetAngle = Math.atan2(currentVelocity.x, currentVelocity.y);
       let delta = targetAngle - playerTank.rotation.y;
       delta = Math.atan2(Math.sin(delta), Math.cos(delta));
-      const maxTurn = 5 * dt; // rad/s
+      const maxTurn = turnPreset.maxTurn * dt;
       delta = Math.max(-maxTurn, Math.min(maxTurn, delta));
       playerTank.rotation.y += delta;
     }
@@ -1856,11 +1862,12 @@ function setupInput() {
     const dx = touch.clientX - stickCenter.x;
     const dy = touch.clientY - stickCenter.y;
     
-    // Deadzone + response curve
+    // Deadzone + response curve (tunable via turn sensitivity)
     const maxDist = 40;
+    const preset = TURN_SENSITIVITY_PRESETS[settings.turnSensitivity] || TURN_SENSITIVITY_PRESETS.medium;
     const rawMag = Math.min(Math.sqrt(dx * dx + dy * dy) / maxDist, 1);
-    const deadzoned = applyDeadzone(rawMag, 0.15);
-    const curved = responseCurve(deadzoned, 1.6);
+    const deadzoned = applyDeadzone(rawMag, preset.deadzone);
+    const curved = responseCurve(deadzoned, preset.exponent);
     const angle = Math.atan2(dy, dx);
     input.x = Math.cos(angle) * curved;
     input.y = Math.sin(angle) * curved;
@@ -1983,6 +1990,9 @@ function setupInput() {
   const diffEasy = document.getElementById('diff-easy');
   const diffMedium = document.getElementById('diff-medium');
   const diffHard = document.getElementById('diff-hard');
+  const turnLow = document.getElementById('turn-low');
+  const turnMedium = document.getElementById('turn-medium');
+  const turnHigh = document.getElementById('turn-high');
   const hudDiff = document.getElementById('hud-diff');
   function applyCameraPreset(preset) {
     const cfg = CAMERA_PRESETS[preset];
@@ -2008,6 +2018,9 @@ function setupInput() {
     if (diffEasy) { diffEasy.style.borderColor = settings.difficulty === 'easy' ? '#ffb45a' : '#4a5057'; diffEasy.style.color = settings.difficulty === 'easy' ? '#ffb45a' : '#e8e4dc'; }
     if (diffMedium) { diffMedium.style.borderColor = settings.difficulty === 'medium' ? '#ffb45a' : '#4a5057'; diffMedium.style.color = settings.difficulty === 'medium' ? '#ffb45a' : '#e8e4dc'; }
     if (diffHard) { diffHard.style.borderColor = settings.difficulty === 'hard' ? '#ffb45a' : '#4a5057'; diffHard.style.color = settings.difficulty === 'hard' ? '#ffb45a' : '#e8e4dc'; }
+    if (turnLow) { turnLow.style.borderColor = settings.turnSensitivity === 'low' ? '#ffb45a' : '#4a5057'; turnLow.style.color = settings.turnSensitivity === 'low' ? '#ffb45a' : '#e8e4dc'; }
+    if (turnMedium) { turnMedium.style.borderColor = settings.turnSensitivity === 'medium' ? '#ffb45a' : '#4a5057'; turnMedium.style.color = settings.turnSensitivity === 'medium' ? '#ffb45a' : '#e8e4dc'; }
+    if (turnHigh) { turnHigh.style.borderColor = settings.turnSensitivity === 'high' ? '#ffb45a' : '#4a5057'; turnHigh.style.color = settings.turnSensitivity === 'high' ? '#ffb45a' : '#e8e4dc'; }
     if (hudDiff) hudDiff.textContent = settings.difficulty.toUpperCase();
   }
   let settingsReturnToPause = false;
@@ -2050,6 +2063,9 @@ function setupInput() {
   if (diffEasy) diffEasy.addEventListener('click', () => { settings.difficulty = 'easy'; updateSettingsUI(); });
   if (diffMedium) diffMedium.addEventListener('click', () => { settings.difficulty = 'medium'; updateSettingsUI(); });
   if (diffHard) diffHard.addEventListener('click', () => { settings.difficulty = 'hard'; updateSettingsUI(); });
+  if (turnLow) turnLow.addEventListener('click', () => { settings.turnSensitivity = 'low'; updateSettingsUI(); });
+  if (turnMedium) turnMedium.addEventListener('click', () => { settings.turnSensitivity = 'medium'; updateSettingsUI(); });
+  if (turnHigh) turnHigh.addEventListener('click', () => { settings.turnSensitivity = 'high'; updateSettingsUI(); });
   updateSettingsUI();
 
   // Pause — visible only during active gameplay, freezes via gameState gating
