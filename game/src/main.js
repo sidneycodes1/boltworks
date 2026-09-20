@@ -1991,11 +1991,21 @@ function setupInput() {
     if (diffHard) { diffHard.style.borderColor = settings.difficulty === 'hard' ? '#ffb45a' : '#4a5057'; diffHard.style.color = settings.difficulty === 'hard' ? '#ffb45a' : '#e8e4dc'; }
     if (hudDiff) hudDiff.textContent = settings.difficulty.toUpperCase();
   }
+  let settingsReturnToPause = false;
   function openSettings() {
+    if (document.getElementById('pause')?.classList.contains('on')) {
+      settingsReturnToPause = true;
+      document.getElementById('pause').classList.remove('on');
+    }
     if (settingsScreen) settingsScreen.classList.add('on');
   }
   function closeSettings() {
     if (settingsScreen) settingsScreen.classList.remove('on');
+    if (settingsReturnToPause) {
+      settingsReturnToPause = false;
+      const pauseScreen = document.getElementById('pause');
+      if (pauseScreen) pauseScreen.classList.add('on');
+    }
   }
   if (settingsBtn) settingsBtn.addEventListener('click', openSettings);
   if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettings);
@@ -2029,30 +2039,9 @@ function setupInput() {
   const resumeBtn = document.getElementById('resume');
   const pauseSettingsBtn = document.getElementById('pause-settings');
   const pauseExitBtn = document.getElementById('pause-exit');
-  let settingsReturnToPause = false;
   let pausedDeathRemaining = 0;
   let pausedWaveRemaining = 0;
   let pausedWaveNext = 0;
-  const origOpenSettings = openSettings;
-  const origCloseSettings = closeSettings;
-  // Wrap open/close to handle pause origin
-  openSettings = function() {
-    if (pauseScreen && pauseScreen.classList.contains('on')) {
-      settingsReturnToPause = true;
-      pauseScreen.classList.remove('on');
-    }
-    settingsScreen.classList.add('on');
-  };
-  closeSettings = function() {
-    settingsScreen.classList.remove('on');
-    if (settingsReturnToPause) {
-      settingsReturnToPause = false;
-      if (pauseScreen) pauseScreen.classList.add('on');
-    }
-  };
-  // Re-bind settings buttons to wrapped versions
-  if (settingsBtn) { settingsBtn.removeEventListener('click', origOpenSettings); settingsBtn.addEventListener('click', openSettings); }
-  if (closeSettingsBtn) { closeSettingsBtn.removeEventListener('click', origCloseSettings); closeSettingsBtn.addEventListener('click', closeSettings); }
   if (pauseBtn) pauseBtn.addEventListener('click', () => {
     if (gameState !== 'playing') return;
     // Suspend timers that would otherwise fire while paused
