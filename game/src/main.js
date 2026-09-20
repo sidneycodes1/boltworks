@@ -965,10 +965,20 @@ function checkGameState() {
     window.__GAME__.wave = wave;
     console.log('[BOLTWORKS] Wave', wave, 'cleared');
     audio.playWaveClear();
+    // Auto-heal to full HP between waves
+    playerHP = MAX_HP;
+    window.__GAME__.hp = playerHP;
+    updateHud();
+    // Flash HP bar for feedback
+    if (hpFill) {
+      hpFill.style.transition = 'none';
+      hpFill.style.background = '#4ade80';
+      setTimeout(() => { hpFill.style.background = 'linear-gradient(90deg,#8b3a3a,#ffb45a)'; hpFill.style.transition = 'width 80ms linear'; }, 300);
+    }
     // Immediate wave-clear banner for clarity
     const banner = document.getElementById('wave-banner');
     if (banner) {
-      banner.textContent = wave < 3 ? `WAVE ${wave + 1}` : 'VICTORY';
+      banner.textContent = wave < 3 ? `WAVE ${wave + 1}  +HP RESTORED` : 'VICTORY';
       banner.style.opacity = '1';
       setTimeout(() => { banner.style.opacity = '0'; }, 1500);
     }
