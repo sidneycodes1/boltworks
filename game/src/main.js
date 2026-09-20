@@ -1841,6 +1841,10 @@ function setupInput() {
     stickNub.style.opacity = '1';
   });
   
+  function applyDeadzone(magnitude, deadzone = 0.15) {
+    if (magnitude < deadzone) return 0;
+    return (magnitude - deadzone) / (1 - deadzone);
+  }
   stick.addEventListener('touchmove', (e) => {
     e.preventDefault();
     if (!stickActive) return;
@@ -1849,13 +1853,13 @@ function setupInput() {
     const dx = touch.clientX - stickCenter.x;
     const dy = touch.clientY - stickCenter.y;
     
-    // Normalize to -1 to 1
+    // Deadzone + scaled response
     const maxDist = 40;
-    const dist = Math.min(Math.sqrt(dx * dx + dy * dy), maxDist);
-    const normDist = dist / maxDist;
-    
-    input.x = (dx / maxDist) * Math.min(normDist * 1.5, 1);
-    input.y = (dy / maxDist) * Math.min(normDist * 1.5, 1);
+    const rawMag = Math.min(Math.sqrt(dx * dx + dy * dy) / maxDist, 1);
+    const deadzoned = applyDeadzone(rawMag, 0.15);
+    const angle = Math.atan2(dy, dx);
+    input.x = Math.cos(angle) * deadzoned;
+    input.y = Math.sin(angle) * deadzoned;
     
     // Update stick nub visual
     stickNub.style.transform = `translate(${dx}px, ${dy}px)`;
