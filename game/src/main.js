@@ -106,7 +106,7 @@ const CAMERA_PRESETS = {
 const TURN_SENSITIVITY_PRESETS = {
   low: { deadzone: 0.20, exponent: 2.0, maxTurn: 3 },
   medium: { deadzone: 0.15, exponent: 1.6, maxTurn: 5 },
-  high: { deadzone: 0.08, exponent: 1.2, maxTurn: 7 }
+  high: { deadzone: 0.02, exponent: 1.0, maxTurn: 10 }
 };
 const DIFFICULTY = {
   easy: { speed: 0.8, fireInterval: 1.4, hp: 0.8, damage: 0.75, perWave: 2, windup: 150 },
