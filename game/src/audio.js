@@ -132,6 +132,25 @@ export class BoltAudio {
     // Layer 3: midrange body/resonance — gives crack some boom
     const body = this._noiseSource(t, 0.12, 'bandpass', 620, 1.0);
     if (body) this._env(body, 0.62, 0.002, 0.09, t);
+
+    // Tail: closing lowpass body (expanding air) + short reverb decay
+    const tailSrc = this._noiseSource(t, 0.35, null, 0);
+    if (tailSrc) {
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(1800, t);
+      lp.frequency.exponentialRampToValueAtTime(280, t + 0.22);
+      try { tailSrc.disconnect(); } catch(e) {}
+      tailSrc.connect(lp);
+      this._env(lp, 0.45, 0.002, 0.22, t);
+    }
+    // Short reverb tail — 3 decaying taps
+    for (let i = 1; i <= 3; i++) {
+      const d = i * 0.07;
+      const g = 0.32 / (i * 1.6);
+      const tap = this._noiseSource(t + d, 0.12, 'lowpass', 1100 - i * 180);
+      if (tap) this._env(tap, g, 0.002, 0.14, t + d);
+    }
   }
 
   playHit() {
