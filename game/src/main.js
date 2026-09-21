@@ -48,6 +48,8 @@ let currentVelocity = new THREE.Vector2(0, 0);
 let aimOverride = false;
 let aimAngle = 0;
 let fireTouchAnchor = null;
+let rawStick = { dx: 0, dy: 0, active: false };
+let keys = {};
 const _toPlayerScratch = new THREE.Vector3();
 const _newPosScratch = new THREE.Vector3();
 const _wallCheckScratch = new THREE.Vector3();
@@ -599,6 +601,40 @@ function loop(time) {
 
   const dt = Math.min((time - lastTime) / 1000, 0.1);
   lastTime = time;
+
+  // Throttled input — read raw state once per frame, not per browser event
+  {
+    const preset = TURN_SENSITIVITY_PRESETS[settings.turnSensitivity] || TURN_SENSITIVITY_PRESETS.medium;
+    if (rawStick.active) {
+      const rawMag = Math.min(Math.hypot(rawStick.dx, rawStick.dy) / 40, 1);
+      const deadzoned = applyDeadzone(rawMag, preset.deadzone);
+      const curved = responseCurve(deadzoned, preset.exponent);
+      const angle = Math.atan2(rawStick.dy, rawStick.dx);
+      input.x = Math.cos(angle) * curved;
+      input.y = Math.sin(angle) * curved;
+    } else {
+      const kx = (keys['ArrowRight'] ? 1 : 0) - (keys['ArrowLeft'] ? 1 : 0);
+      const ky = (keys['ArrowDown'] ? 1 : 0) - (keys['ArrowUp'] ? 1 : 0);
+      const mag = Math.hypot(kx, ky);
+      if (mag > 0) {
+        const angle = Math.atan2(ky, kx);
+        const deadzoned = applyDeadzone(Math.min(mag, 1), preset.deadzone);
+        const curved = responseCurve(deadzoned, preset.exponent);
+        input.x = Math.cos(angle) * curved;
+        input.y = Math.sin(angle) * curved;
+      } else {
+        input.x = 0;
+        input.y = 0;
+      }
+    }
+    const wasFiring = input.fire;
+    input.fire = !!keys['Space'] || !!fireTouchAnchor;
+    if (input.fire !== wasFiring) {
+      if (input.fire) fireBtn.classList.add('dn');
+      else fireBtn.classList.remove('dn');
+    }
+    if (!input.fire) aimOverride = false;
+  }
 
   // Assembly and end states still render, but never run code that assumes a
   // player tank exists. This is a state transition, not a null-object dodge.
@@ -1902,43 +1938,32 @@ function setupInput() {
   stick.addEventListener('touchmove', (e) => {
     e.preventDefault();
     if (!stickActive) return;
-    
     const touch = e.touches[0];
-    const dx = touch.clientX - stickCenter.x;
-    const dy = touch.clientY - stickCenter.y;
-    
-    // Deadzone + response curve (tunable via turn sensitivity)
-    const maxDist = 40;
-    const preset = TURN_SENSITIVITY_PRESETS[settings.turnSensitivity] || TURN_SENSITIVITY_PRESETS.medium;
-    const rawMag = Math.min(Math.sqrt(dx * dx + dy * dy) / maxDist, 1);
-    const deadzoned = applyDeadzone(rawMag, preset.deadzone);
-    const curved = responseCurve(deadzoned, preset.exponent);
-    const angle = Math.atan2(dy, dx);
-    input.x = Math.cos(angle) * curved;
-    input.y = Math.sin(angle) * curved;
-    
-    // Update stick nub visual
-    stickNub.style.transform = `translate(${dx}px, ${dy}px)`;
+    rawStick.dx = touch.clientX - stickCenter.x;
+    rawStick.dy = touch.clientY - stickCenter.y;
+    rawStick.active = true;
+    // Visual follows raw finger instantly
+    stickNub.style.transform = `translate(${rawStick.dx}px, ${rawStick.dy}px)`;
   });
   
   stick.addEventListener('touchend', (e) => {
     e.preventDefault();
     stickActive = false;
+    rawStick.active = false;
+    rawStick.dx = 0;
+    rawStick.dy = 0;
     stick.classList.remove('active');
-    input.x = 0;
-    input.y = 0;
     stickBase.style.opacity = '0';
     stickNub.style.opacity = '0';
     stickNub.style.transform = 'translate(0, 0)';
   });
   
-  // Fire button — hold to fire, drag to aim (twin-stick)
+  // Fire button — hold to fire, drag to aim (twin-stick) — raw state only, loop handles input
   fireBtn.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const t = e.touches[0];
     fireTouchAnchor = { x: t.clientX, y: t.clientY };
     aimOverride = false;
-    input.fire = true;
     fireBtn.classList.add('dn');
   });
   fireBtn.addEventListener('touchmove', (e) => {
@@ -1948,21 +1973,19 @@ function setupInput() {
     const dx = t.clientX - fireTouchAnchor.x;
     const dy = t.clientY - fireTouchAnchor.y;
     if (Math.hypot(dx, dy) > 12) {
-      const rawAngle = Math.atan2(dx, -dy); // screen up is -y
+      const rawAngle = Math.atan2(dx, -dy);
       aimAngle = rawAngle - ISO_ANGLE;
       aimOverride = true;
     }
   }, { passive: false });
   fireBtn.addEventListener('touchend', (e) => {
     e.preventDefault();
-    input.fire = false;
     fireBtn.classList.remove('dn');
     aimOverride = false;
     fireTouchAnchor = null;
   });
   fireBtn.addEventListener('touchcancel', (e) => {
     e.preventDefault();
-    input.fire = false;
     fireBtn.classList.remove('dn');
     aimOverride = false;
     fireTouchAnchor = null;
@@ -2172,27 +2195,12 @@ function setupInput() {
     exitToTitle();
   });
 
-  // Keyboard fallback for desktop
-  const keys = {};
-  window.addEventListener('keydown', (e) => {
-    keys[e.code] = true;
-    updateKeys();
-  });
+  // Keyboard fallback for desktop — raw state only, processed once per frame (keys is global)
+  window.addEventListener('keydown', (e) => { keys[e.code] = true; });
   window.addEventListener('keyup', (e) => {
     keys[e.code] = false;
     if (e.code === 'KeyC') window.__CAPTURE_TRIGGERED__ = false;
-    updateKeys();
   });
-  
-  function updateKeys() {
-    input.x = (keys['ArrowRight'] ? 1 : 0) - (keys['ArrowLeft'] ? 1 : 0);
-    input.y = (keys['ArrowDown'] ? 1 : 0) - (keys['ArrowUp'] ? 1 : 0);
-    const wasFiring = input.fire;
-    input.fire = keys['Space'] || false;
-    if (!input.fire && !fireTouchAnchor) aimOverride = false;
-
-    if (input.fire) fireBtn.classList.add('dn');
-    else fireBtn.classList.remove('dn');
 
     // Debug: trigger wave with 'W' key
     if (keys['KeyW'] && !window.__WAVE_TRIGGERED__) {
@@ -2263,7 +2271,6 @@ function setupInput() {
     camera.bottom = frustumSize / -2;
     camera.updateProjectionMatrix();
   });
-}
 
 // Start
 console.log('[BOLTWORKS] Starting init...');
